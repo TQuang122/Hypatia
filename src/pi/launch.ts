@@ -1,0 +1,97 @@
+import { spawn } from "node:child_process";
+import { constants } from "node:os";
+
+import {
+	buildPiArgs,
+	buildPiEnv,
+	ensureHypatiaCommandShim,
+	ensureHypatiaWorkspaceScaffold,
+	type PiRuntimeOptions,
+	resolvePiCliPath,
+} from "./runtime.js";
+import { resolveAllExecutables } from "../system/executables.js";
+import { telemetryFirstRunNotice } from "../telemetry/posthog.js";
+import { printExitSummary, shouldPrintExitSummary } from "./exit-summary.js";
+
+export function exitCodeFromSignal(signal: NodeJS.Signals): number {
+	const signalNumber = constants.signals[signal];
+	return typeof signalNumber === "number" ? 128 + signalNumber : 1;
+}
+
+// The end of Pi's stderr from the last run, reported with a failed command so
+// crashes inside Pi are debuggable.
+let lastPiStderr = "";
+export function getLastPiStderr(): string {
+	return lastPiStderr;
+}
+
+export async function runPi(
+	options: PiRuntimeOptions,
+	args: string[],
+	env: NodeJS.ProcessEnv,
+	stdin: "inherit" | "ignore" = "inherit",
+): Promise<number> {
+	const piCliPath = resolvePiCliPath(options.appRoot);
+	if (!piCliPath) {
+		throw new Error("Pi CLI not found. Reinstall Hypatia.");
+	}
+	const child = spawn(process.execPath, [piCliPath, ...args], {
+		cwd: options.workingDir,
+		stdio: [stdin, "inherit", "pipe"],
+		env,
+	});
+	lastPiStderr = "";
+	child.stderr?.on("data", (chunk: Buffer) => {
+		process.stderr.write(chunk);
+		lastPiStderr = (lastPiStderr + chunk.toString("utf8")).slice(-8000);
+	});
+
+	return await new Promise<number>((resolvePromise, reject) => {
+		child.on("error", reject);
+		child.on("exit", (code, signal) => {
+			if (signal) {
+				console.error(`hypatia terminated because the Pi child exited with ${signal}.`);
+				resolvePromise(exitCodeFromSignal(signal));
+				return;
+			}
+			resolvePromise(code ?? 0);
+		});
+	});
+}
+
+export async function launchPiChat(options: PiRuntimeOptions): Promise<void> {
+	if (process.stdout.isTTY && options.mode !== "rpc") {
+		process.stdout.write("\x1b[2J\x1b[3J\x1b[H");
+		// Clearing the screen erased the first-run notice printed at startup.
+		const telemetryNotice = telemetryFirstRunNotice();
+		if (telemetryNotice) process.stderr.write(`${telemetryNotice}\n`);
+	}
+
+	if (options.preLaunchNotice) {
+		process.stdout.write(`${options.preLaunchNotice}\n`);
+	}
+
+	const executables = await resolveAllExecutables();
+	ensureHypatiaCommandShim(options.appRoot, options.hypatiaAgentDir);
+	ensureHypatiaWorkspaceScaffold(options.workingDir);
+	// Outside RPC mode Pi reads piped stdin until EOF and prepends it to the
+	// prompt, so an open but idle stdin from a non-TTY parent would hang an
+	// explicit prompt forever.
+	const explicitPrompt = Boolean(options.oneShotPrompt || options.initialPrompt);
+	const stdin = explicitPrompt && options.mode !== "rpc" && !process.stdin.isTTY ? "ignore" : "inherit";
+	const startedAtMs = Date.now();
+	process.exitCode = await runPi(options, buildPiArgs(options), buildPiEnv(options, executables), stdin);
+	if (shouldPrintExitSummary({
+		exitCode: process.exitCode,
+		mode: options.mode,
+		oneShotPrompt: options.oneShotPrompt,
+		isTTY: process.stdout.isTTY,
+	})) {
+		printExitSummary({
+			workingDir: options.workingDir,
+			sessionDir: options.sessionDir,
+			piArgs: options.piArgs ?? [],
+			startedAtMs,
+		});
+	}
+}

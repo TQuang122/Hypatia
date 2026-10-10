@@ -1,0 +1,589 @@
+---
+import Layout from "@/layouts/main.astro"
+import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+
+const workflows = [
+  { command: "/deepresearch", description: "Plan-first investigation across papers, web, and code, with parallel evidence scouts when the topic needs them" },
+  { command: "/lit", description: "Literature review from primary sources with consensus mapping" },
+  { command: "/review", description: "Internal research critique with severity scores and a revision plan" },
+  { command: "/audit", description: "Paper-to-code mismatch audit for reproducibility claims" },
+  { command: "/replicate", description: "Replication plan with environment choice before any execution" },
+  { command: "/recipe", description: "Ranked ML training recipes grounded in papers, datasets, docs, and code" },
+  { command: "/compare", description: "Side-by-side source comparison with agreement and conflict matrix" },
+  { command: "/draft", description: "Polished paper-style draft with inline citations from findings" },
+  { command: "/autoresearch", description: "Bounded loop: hypothesize, experiment, measure, repeat" },
+  { command: "/summarize", description: "Summarize papers, reports, READMEs, local artifacts, and PDFs with bounded-window reading for long sources" },
+]
+
+const workflowGroups = [
+  {
+    name: "Explore",
+    subtitle: "Find, read, and connect sources",
+    workflows: [workflows[0], workflows[1], workflows[6], workflows[9]],
+  },
+  {
+    name: "Assess",
+    subtitle: "Review and reproduce work",
+    workflows: [workflows[2], workflows[3], workflows[4]],
+  },
+  {
+    name: "Create & test",
+    subtitle: "Turn evidence into next steps",
+    workflows: [workflows[5], workflows[7], workflows[8]],
+  },
+]
+
+const sources = [
+  { name: "Literature databases", description: "Semantic Scholar, OpenAlex, arXiv, PubMed, Europe PMC, bioRxiv/medRxiv, Crossref, CORE, and DOAB with stable identifiers" },
+  { name: "alphaXiv", description: "Paper search, Q&A, code reading, and annotations", href: "https://www.alphaxiv.org/" },
+  { name: "Hugging Face Hub", description: "Dataset schema, repo file, and small text-file inspection" },
+  { name: "Web research", description: "Search, page fetching, and PDF extraction; Exa works without a key" },
+  { name: "Documents", description: "Local PDF and office-document parsing, search, and page screenshots" },
+]
+
+const agents = [
+  {
+    id: "auditor",
+    code: "A",
+    name: "Auditor",
+    action: "VERIFY",
+    label: "ROLE / AUDIT",
+    summary: "Checks source support for claims and removes what the evidence cannot support.",
+    detail: "Checks URLs and paper identity, then ties claims, results, and tables to inspectable evidence.",
+  },
+  {
+    id: "evidence-scout",
+    code: "B",
+    name: "Evidence Scout",
+    action: "FIND",
+    label: "ROLE / DISCOVERY",
+    summary: "Searches papers, web sources, repos, and datasets for relevant evidence.",
+    detail: "Reads relevant sources, labels inferences, and reports coverage gaps for the lead agent.",
+  },
+  {
+    id: "scribe",
+    code: "C",
+    name: "Scribe",
+    action: "DRAFT",
+    label: "ROLE / DRAFT",
+    summary: "Shapes supplied research files into a structured brief or draft.",
+    detail: "Preserves caveats and open questions, writes only from supplied evidence, and leaves citations to the auditor.",
+  },
+  {
+    id: "critic",
+    code: "D",
+    name: "Critic",
+    action: "REVIEW",
+    label: "ROLE / REVIEW",
+    summary: "Reviews novelty, empirical rigor, clarity, and reproducibility.",
+    detail: "Returns severity-graded findings, questions for the authors, and a prioritized revision plan.",
+  },
+  {
+    id: "reviser",
+    code: "E",
+    name: "Reviser",
+    action: "REVISE",
+    label: "ROLE / REVISION",
+    summary: "Applies high-priority critique findings with small, targeted edits.",
+    detail: "Does not add claims, sources, or citations; escalates changes that need new evidence or broader rewriting.",
+  },
+]
+
+const installCommands = [
+  { label: "curl", command: "curl -fsSL https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.sh | bash" },
+  { label: "PowerShell", command: "irm https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.ps1 | iex" },
+  { label: "npm", command: "npm install -g @TQuang122/hypatia" },
+]
+---
+
+<Layout
+  title="Hypatia — Research-First Agent Shell for Scientific Rigor"
+  description="A research-first CLI for evidence gathering, literature review, source checks, and reproducible research workflows."
+  active="home"
+>
+  <div class="mx-auto max-w-5xl px-6">
+
+    <section class="flex flex-col items-center gap-8 pb-16 pt-20 text-center">
+      <div class="flex max-w-3xl flex-col items-center gap-4">
+        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl text-balance">
+          Research-First Agent Shell <br />
+          <span class="font-serif-hero text-primary">for Scientific Rigor.</span>
+        </h1>
+        <p class="mx-auto max-w-2xl text-lg text-muted-foreground leading-relaxed sm:text-xl text-balance">
+          Source-backed research, with specialist agents when useful.
+        </p>
+        <p class="text-sm text-muted-foreground">
+          Built on <a href="https://github.com/earendil-works/pi" class="text-primary hover:underline">Pi Runtime</a>
+        </p>
+      </div>
+
+      <div class="flex w-full max-w-3xl flex-col items-center gap-4">
+        <div class="flex w-full max-w-full flex-col">
+          <div class="flex max-w-full items-center gap-1 self-start">
+            {installCommands.map((entry, i) => (
+              <button
+                class:list={[
+                  "install-toggle shrink-0 rounded-t-md px-3.5 py-1.5 font-mono text-xs font-medium transition-all cursor-pointer border border-b-0",
+                  i === 0
+                    ? "border-border bg-muted text-primary font-semibold"
+                    : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                ]}
+                data-command={entry.command}
+                aria-label={`Show ${entry.label} install command`}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+          <button
+            id="install-cmd"
+            class="group flex w-full min-w-0 max-w-full items-center justify-between gap-3 rounded-b-lg rounded-tr-lg border border-border bg-muted px-4 py-3 text-left font-mono text-xs transition-all hover:border-primary/40 hover:bg-muted/90 cursor-pointer sm:text-sm"
+            data-command={installCommands[0].command}
+            aria-label="Copy install command"
+          >
+            <span class="select-none font-semibold text-primary mr-1">$</span>
+            <span id="install-command" class="flex-1 min-w-0 break-all whitespace-normal leading-relaxed text-foreground sm:overflow-hidden sm:text-ellipsis sm:whitespace-nowrap">{installCommands[0].command}</span>
+            <span id="install-copy-indicator" class="flex shrink-0 items-center gap-1.5 rounded border border-border/60 bg-background/60 px-2 py-1 text-[11px] text-muted-foreground transition-all group-hover:border-border group-hover:text-foreground">
+              <svg id="install-copy" class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <svg id="install-check" class="hidden size-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span id="install-copy-text">Copy</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <a href="/docs/getting-started/installation">
+            <Button client:load size="lg">Get Started</Button>
+          </a>
+          <a href="https://github.com/TQuang122/hypatia" target="_blank" rel="noopener noreferrer" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+            GitHub
+          </a>
+        </div>
+
+
+        <p class="text-sm text-muted-foreground">
+          Need just the skills? <a href="/docs/getting-started/installation#skills-only" class="text-primary hover:underline">Install the skills-only bundle</a>.
+        </p>
+      </div>
+
+      <!-- Hero CLI Visual with 3D Tilt & Specular Shimmer -->
+      <div class="relative mt-4 w-full flex items-center justify-center group" id="hero-tilt-wrap">
+        <!-- Soft Radial Atmospheric Bloom behind the terminal -->
+        <div id="hero-tilt-glow" class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[75%] w-[88%] max-w-3xl rounded-full bg-primary/20 blur-[80px] transition-all duration-700 ease-out group-hover:bg-primary/35 group-hover:blur-[100px] pointer-events-none -z-10"></div>
+
+        <!-- 3D Perspective Card Container -->
+        <div id="hero-tilt-card" class="relative w-full max-w-4xl overflow-hidden rounded-2xl shadow-[0_35px_100px_-20px_rgba(0,0,0,0.95),0_0_60px_-15px_rgba(217,59,48,0.25)] transition-shadow duration-500 group-hover:shadow-[0_45px_120px_-15px_rgba(0,0,0,0.98),0_0_80px_-10px_rgba(217,59,48,0.4)]">
+          <div class="relative overflow-hidden rounded-2xl">
+            <img
+              src="/hypatia-hero.png"
+              class="w-full block"
+              alt="Hypatia CLI"
+            />
+            <!-- Specular Light Sweep Overlay -->
+            <div class="hero-shimmer" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16">
+      <div class="flex flex-col gap-8">
+        <div class="flex flex-col items-center gap-3 text-center">
+          <p class="font-mono text-xs font-medium uppercase tracking-[0.16em] text-primary">Specialists / called when useful</p>
+          <h2 class="text-3xl font-bold tracking-tight sm:text-5xl">
+            Five roles. <span class="font-serif-hero text-primary">Clear boundaries.</span>
+          </h2>
+          <p class="mx-auto max-w-2xl text-muted-foreground leading-relaxed">
+            Hypatia can delegate to these specialists when a workflow benefits from it. Narrow requests stay lead-owned.
+          </p>
+        </div>
+
+        <div
+          class="grid w-full grid-cols-1 border-y border-border sm:grid-cols-[minmax(13rem,0.7fr)_minmax(0,1.3fr)]"
+          data-agent-index
+        >
+          <div class="flex flex-col border-b border-border sm:border-b-0 sm:border-r" role="group" aria-label="Hypatia subagent roles">
+            {agents.map((agent, index) => (
+              <button
+                id={`agent-select-${agent.id}`}
+                class="agent-index-button grid min-h-16 w-full grid-cols-[2rem_1fr_auto] items-center gap-3 border-b border-border px-4 py-4 text-left last:border-b-0"
+                type="button"
+                data-agent-select={agent.id}
+                aria-pressed={index === 0 ? "true" : "false"}
+                aria-controls={`agent-panel-${agent.id}`}
+              >
+                <span class="agent-index-id font-mono text-lg">{agent.code}</span>
+                <span class="agent-index-name">{agent.name}</span>
+                <span class="agent-index-action font-mono text-[0.65rem] tracking-[0.08em]">{agent.action}</span>
+              </button>
+            ))}
+          </div>
+
+          <div class="flex min-h-[20rem] items-center px-6 py-10 sm:px-9 lg:px-14" aria-live="polite">
+            {agents.map((agent, index) => (
+              <article
+                id={`agent-panel-${agent.id}`}
+                class="w-full"
+                data-agent-panel={agent.id}
+                aria-labelledby={`agent-select-${agent.id}`}
+                hidden={index !== 0}
+              >
+                <p class="font-mono text-xs tracking-[0.16em] text-primary">{agent.label}</p>
+                <h3 class="mt-4 font-serif-hero text-4xl tracking-tight sm:text-5xl">{agent.name}</h3>
+                <p class="mt-4 max-w-xl text-base leading-relaxed text-foreground">{agent.summary}</p>
+                <p class="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{agent.detail}</p>
+                <div class="mt-6 h-px w-11 bg-primary" aria-hidden="true"></div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <p class="flex items-center gap-3 text-sm text-muted-foreground">
+          <span class="h-px w-6 bg-primary" aria-hidden="true"></span>
+          An index of capabilities, not a required workflow order.
+        </p>
+      </div>
+    </section>
+
+    <section class="py-16" aria-labelledby="workflows-heading">
+      <div class="flex flex-col gap-8">
+        <div class="flex flex-col items-center gap-3 text-center">
+          <p class="font-mono text-xs font-medium uppercase tracking-[0.16em] text-primary">Research workflows</p>
+          <h2 id="workflows-heading" class="text-3xl font-bold tracking-tight sm:text-5xl">
+            Find the next useful <span class="font-serif-hero text-primary">command.</span>
+          </h2>
+          <p class="mx-auto max-w-2xl text-muted-foreground leading-relaxed">
+            Run as slash commands in the REPL or as <code>hypatia &lt;workflow&gt;</code> from your shell.
+          </p>
+        </div>
+
+        <div class="grid w-full grid-cols-1 border-y border-border md:grid-cols-3">
+          {workflowGroups.map((group, index) => (
+            <div
+              class:list={[
+                "min-w-0 py-5 md:px-5",
+                index > 0 ? "border-t border-border md:border-t-0 md:border-l" : "",
+                index === 0 ? "md:pl-0" : "",
+                index === workflowGroups.length - 1 ? "md:pr-0" : "",
+              ]}
+            >
+              <div class="mb-4 flex items-baseline justify-between gap-3">
+                <h3 class="font-serif-hero text-xl font-semibold sm:text-2xl">{group.name}</h3>
+                <span class="font-mono text-xs tracking-[0.08em] text-primary">0{index + 1}</span>
+              </div>
+              <p class="mb-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">{group.subtitle}</p>
+              <div>
+                {group.workflows.map((workflow) => (
+                  <article class="border-t border-border py-3">
+                    <code class="font-mono text-sm text-primary">{workflow.command}</code>
+                    <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{workflow.description}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </section>
+
+    <section class="py-16">
+      <div class="flex flex-col items-center gap-8 text-center">
+        <div class="flex flex-col gap-2">
+          <h2 class="text-2xl font-bold tracking-tight sm:text-3xl">Sources</h2>
+          <p class="text-muted-foreground">Where Hypatia looks for evidence.</p>
+        </div>
+        <div class="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sources.map((source) => (
+            <Card client:load size="sm" className="text-center">
+              <CardHeader client:load className="items-center">
+                <CardTitle client:load>
+                  {source.href ? (
+                    <a href={source.href} target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">
+                      {source.name}
+                    </a>
+                  ) : (
+                    source.name
+                  )}
+                </CardTitle>
+                <CardDescription client:load>{source.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="flex flex-col items-center gap-6 py-20 text-center">
+      <p class="text-muted-foreground">
+        Built on <a href="https://github.com/earendil-works/pi" class="text-primary hover:underline">Pi</a>, with <a href="https://www.alphaxiv.org/" class="text-primary hover:underline">alphaXiv</a> and scholarly database integrations. Selected workflows can produce cited briefs with provenance sidecars.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <a href="/docs/getting-started/installation">
+          <Button client:load size="lg">Get Started</Button>
+        </a>
+        <a href="https://github.com/TQuang122/hypatia" target="_blank" rel="noopener noreferrer">
+          <Button client:load variant="outline" size="lg">View on GitHub</Button>
+        </a>
+      </div>
+    </section>
+
+  </div>
+
+  <script is:inline>
+    (function () {
+      function initAgentIndex() {
+        var root = document.querySelector("[data-agent-index]")
+        if (!root || root._agentIndexReady) return
+        root._agentIndexReady = true
+
+        var buttons = Array.from(root.querySelectorAll("[data-agent-select]"))
+        var panels = Array.from(root.querySelectorAll("[data-agent-panel]"))
+
+        function select(button) {
+          var selectedId = button.getAttribute("data-agent-select")
+          buttons.forEach(function (item) {
+            item.setAttribute("aria-pressed", item === button ? "true" : "false")
+          })
+          panels.forEach(function (panel) {
+            panel.hidden = panel.getAttribute("data-agent-panel") !== selectedId
+          })
+        }
+
+        function handleSelection(event) {
+          if (!event.target || !event.target.closest) return
+          var button = event.target.closest("[data-agent-select]")
+          if (button && root.contains(button)) select(button)
+        }
+
+        root.addEventListener("pointerover", handleSelection)
+        root.addEventListener("focusin", handleSelection)
+        root.addEventListener("click", handleSelection)
+      }
+
+      function initHeroTilt() {
+        var wrap = document.getElementById("hero-tilt-wrap")
+        var card = document.getElementById("hero-tilt-card")
+        var glow = document.getElementById("hero-tilt-glow")
+        var shimmer = wrap ? wrap.querySelector(".hero-shimmer") : null
+        if (!wrap || !card || wrap._tiltInit) return
+        wrap._tiltInit = true
+
+        // Initial specular sweep on load
+        if (shimmer) {
+          setTimeout(function () {
+            shimmer.classList.add("sweep-active")
+            setTimeout(function () {
+              shimmer.classList.remove("sweep-active")
+            }, 1400)
+          }, 600)
+        }
+
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+        var isHovered = false
+        var rafId = null
+        var targetRotX = 0
+        var targetRotY = 0
+        var currentRotX = 0
+        var currentRotY = 0
+
+        function updateTilt() {
+          if (!isHovered) {
+            currentRotX += (0 - currentRotX) * 0.1
+            currentRotY += (0 - currentRotY) * 0.1
+            if (Math.abs(currentRotX) < 0.01 && Math.abs(currentRotY) < 0.01) {
+              currentRotX = 0
+              currentRotY = 0
+              card.style.transform = "perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)"
+              if (glow) glow.style.transform = "translate(-50%, -50%)"
+              rafId = null
+              return
+            }
+          } else {
+            currentRotX += (targetRotX - currentRotX) * 0.15
+            currentRotY += (targetRotY - currentRotY) * 0.15
+          }
+
+          card.style.transform =
+            "perspective(1200px) rotateX(" +
+            currentRotX.toFixed(2) +
+            "deg) rotateY(" +
+            currentRotY.toFixed(2) +
+            "deg) scale3d(1.012, 1.012, 1.012)"
+
+          if (glow) {
+            var glowShiftX = -currentRotY * 3
+            var glowShiftY = -currentRotX * 3
+            glow.style.transform =
+              "translate(calc(-50% + " + glowShiftX.toFixed(1) + "px), calc(-50% + " + glowShiftY.toFixed(1) + "px))"
+          }
+
+          rafId = requestAnimationFrame(updateTilt)
+        }
+
+        wrap.addEventListener("mousemove", function (e) {
+          var rect = wrap.getBoundingClientRect()
+          var x = (e.clientX - rect.left) / rect.width - 0.5
+          var y = (e.clientY - rect.top) / rect.height - 0.5
+
+          targetRotX = -y * 6
+          targetRotY = x * 6
+          isHovered = true
+
+          if (!rafId) {
+            rafId = requestAnimationFrame(updateTilt)
+          }
+        })
+
+        wrap.addEventListener("mouseleave", function () {
+          isHovered = false
+          targetRotX = 0
+          targetRotY = 0
+          if (!rafId) {
+            rafId = requestAnimationFrame(updateTilt)
+          }
+        })
+      }
+
+      function init() {
+        initAgentIndex()
+        initHeroTilt()
+        var toggles = Array.from(document.querySelectorAll(".install-toggle"))
+        var btn = document.getElementById("install-cmd")
+        var text = document.getElementById("install-command")
+        var copyIcon = document.getElementById("install-copy")
+        var checkIcon = document.getElementById("install-check")
+        var copyText = document.getElementById("install-copy-text")
+        if (!btn || !text || !copyIcon || !checkIcon) return
+
+        toggles.forEach(function (toggle) {
+          if (toggle._b) return
+          toggle._b = true
+          toggle.addEventListener("click", function () {
+            var cmd = toggle.getAttribute("data-command")
+            if (!cmd) return
+            btn.setAttribute("data-command", cmd)
+            text.textContent = cmd
+            toggles.forEach(function (t) {
+              t.classList.remove("border-border", "bg-muted", "text-primary", "font-semibold")
+              t.classList.add("border-transparent", "bg-muted/30", "text-muted-foreground")
+            })
+            toggle.classList.remove("border-transparent", "bg-muted/30", "text-muted-foreground")
+            toggle.classList.add("border-border", "bg-muted", "text-primary", "font-semibold")
+          })
+        })
+
+        if (!btn._b) {
+          btn._b = true
+          btn.addEventListener("click", function () {
+            var cmd = btn.getAttribute("data-command")
+            if (!cmd) return
+            navigator.clipboard.writeText(cmd).then(function () {
+              copyIcon.classList.add("hidden")
+              checkIcon.classList.remove("hidden")
+              if (copyText) {
+                copyText.textContent = "Copied!"
+                copyText.classList.add("text-primary", "font-semibold")
+              }
+              setTimeout(function () {
+                copyIcon.classList.remove("hidden")
+                checkIcon.classList.add("hidden")
+                if (copyText) {
+                  copyText.textContent = "Copy"
+                  copyText.classList.remove("text-primary", "font-semibold")
+                }
+              }, 2000)
+            })
+          })
+        }
+      }
+      init()
+      document.addEventListener("astro:after-swap", init)
+    })()
+  </script>
+
+  <style>
+    .agent-index-button {
+      padding-left: 1rem;
+      background: transparent;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      transition: color 160ms ease, padding 160ms ease;
+    }
+    .agent-index-button:hover,
+    .agent-index-button:focus-visible,
+    .agent-index-button[aria-pressed="true"] {
+      padding-left: 1.5rem;
+      color: var(--foreground);
+    }
+    .agent-index-id { color: var(--muted-foreground); }
+    .agent-index-button:hover .agent-index-id,
+    .agent-index-button:focus-visible .agent-index-id,
+    .agent-index-button[aria-pressed="true"] .agent-index-id,
+    .agent-index-action { color: var(--primary); }
+    .agent-index-name {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .hero-shimmer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(
+        105deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.02) 36%,
+        rgba(255, 255, 255, 0.14) 50%,
+        rgba(255, 255, 255, 0.02) 64%,
+        transparent 80%
+      );
+      background-size: 250% 100%;
+      background-position: 200% 0;
+      opacity: 0;
+    }
+
+    .hero-shimmer.sweep-active,
+    #hero-tilt-wrap:hover .hero-shimmer {
+      animation: hero-specular-sweep 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes hero-specular-sweep {
+      0% {
+        background-position: 200% 0;
+        opacity: 0;
+      }
+      20% {
+        opacity: 1;
+      }
+      80% {
+        opacity: 1;
+      }
+      100% {
+        background-position: -80% 0;
+        opacity: 0;
+      }
+    }
+
+    #hero-tilt-card {
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: box-shadow 0.5s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .agent-index-button { transition: none; }
+      #hero-tilt-card {
+        transform: none !important;
+        transition: none !important;
+      }
+      .hero-shimmer {
+        animation: none !important;
+      }
+    }
+  </style>
+</Layout>

@@ -1,0 +1,76 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import test from "node:test";
+
+const root = process.cwd();
+const verifier = resolve(root, "scripts", "verify-package-budget.mjs");
+
+function runBudget(packMetadata: Record<string, unknown>) {
+	const tempRoot = mkdtempSync(join(tmpdir(), "hypatia-package-budget-"));
+	const packOutput = join(tempRoot, "pack.json");
+	writeFileSync(
+		packOutput,
+		`prepack lifecycle output\n${JSON.stringify([packMetadata])}\n`,
+		"utf8",
+	);
+	return spawnSync(process.execPath, [verifier, packOutput], {
+		encoding: "utf8",
+	});
+}
+
+test("package release budget is documented and accepts the measured candidate shape", () => {
+	const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
+		hypatiaReleaseBudget: {
+			maxTarballBytes: number;
+			maxUnpackedBytes: number;
+			maxFileCount: number;
+		};
+	};
+	assert.deepEqual(manifest.hypatiaReleaseBudget, {
+		maxTarballBytes: 2_097_152,
+		maxUnpackedBytes: 8_388_608,
+		maxFileCount: 1_000,
+	});
+
+	const result = runBudget({
+		filename: "TQuang122-hypatia-0.4.0.tgz",
+		size: 252_462,
+		unpackedSize: 999_085,
+		entryCount: 104,
+	});
+	assert.equal(result.status, 0, result.stderr);
+});
+
+test("package release budget accepts npm pack totalFiles metadata from older npm releases", () => {
+	const result = runBudget({
+		filename: "TQuang122-hypatia-0.4.0.tgz",
+		size: 252_462,
+		unpackedSize: 999_085,
+		totalFiles: 104,
+	});
+	assert.equal(result.status, 0, result.stderr);
+});
+
+test("package release budget rejects compressed size and file-count regressions", () => {
+	for (const packMetadata of [
+		{
+			filename: "TQuang122-hypatia-0.4.0.tgz",
+			size: 2_097_153,
+			unpackedSize: 999_085,
+			entryCount: 104,
+		},
+		{
+			filename: "TQuang122-hypatia-0.4.0.tgz",
+			size: 252_462,
+			unpackedSize: 999_085,
+			entryCount: 1_001,
+		},
+	]) {
+		const result = runBudget(packMetadata);
+		assert.notEqual(result.status, 0);
+		assert.match(result.stderr, /hypatia package budget/);
+	}
+});

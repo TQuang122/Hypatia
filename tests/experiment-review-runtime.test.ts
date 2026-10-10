@@ -1,0 +1,80 @@
+import assert from "node:assert/strict";
+import { mkdtemp, writeFile, readFile, rm, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { ModelRuntime, ModelRegistry, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { fauxProvider, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import { registerExperimentWorkflow } from "../extensions/research-tools/experiment-workflow.js";
+import { engine } from "../extensions/research-tools/experiment-engine.js";
+import { performExperimentReview, parseReviewOutput, consumeReviewSession } from "../extensions/research-tools/experiment-review.js";
+test("review output parser accepts a single JSON object or fence and rejects prose and multiple objects", () => {
+  assert.deepEqual(parseReviewOutput('```json\n{"a":1}\n```'), { a: 1 });
+  assert.throws(() => parseReviewOutput('Here is a review: {"a":1}'));
+  assert.throws(() => parseReviewOutput('{} {}'));
+});
+const benchmarkTest = process.platform === "win32" ? test.skip : test;
+benchmarkTest("real fresh Pi SDK reviewers automatically gate baseline/close with only evidence-read tools (synthetic provider)", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "review-sdk-")); t.after(() => rm(cwd, { recursive: true, force: true }));
+  const agentDir = join(cwd, "agent"); await mkdir(agentDir);
+  const previous = process.env.PI_CODING_AGENT_DIR; process.env.PI_CODING_AGENT_DIR = agentDir;
+  t.after(() => { if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR; else process.env.PI_CODING_AGENT_DIR = previous; });
+  await writeFile(join(cwd, "bench.mjs"), "console.log('HYPATIA_METRIC '+JSON.stringify({score:1}));");
+  const fake = fauxProvider({ provider: "review-fixture", models: [{ id: "fixture-model", reasoning: false }] });
+  const parent = await ModelRuntime.create({ authPath: join(agentDir, "auth.json"), modelsPath: join(agentDir, "models.json"), allowModelNetwork: false }); parent.registerNativeProvider(fake.provider);
+  const runtime = await engine();
+  const input = { slug: "sdk-run", hypothesis: "A synthetic SDK integration fixture", argv: [process.execPath, "bench.mjs"], filesInScope: ["bench.mjs"], metric: { source: "stdout" as const, key: "score", unit: "score", direction: "max" as const }, environment: "Synthetic Node fixture", maxWallSeconds: 10, timeoutPerRun: 3 };
+  await runtime.create(cwd, input); await runtime.approve(cwd, input.slug);
+  const toolNames: string[][] = [], systemPrompts: string[] = [], bundleHashes: string[] = [];
+  const readStep = (context: any) => {
+    toolNames.push(context.messages.flatMap((message: any) => message.toolsAdded ?? []).map((tool: any) => tool.name));
+    const text = JSON.stringify(context);
+    const path = text.match(/Evidence bundle: ([^\\]+)\\n/)![1]!;
+    const hash = text.match(/Bundle SHA256: ([a-f0-9]{64})/)![1]!; bundleHashes.push(hash);
+    systemPrompts.push(text);
+    return fauxAssistantMessage(fauxToolCall("experiment_read", { path, offset: 1, limit: 200 }), { stopReason: "toolUse" });
+  };
+  const verdictStep = (context: any) => {
+    toolNames.push(context.messages.flatMap((message: any) => message.toolsAdded ?? []).map((tool: any) => tool.name));
+    assert.match(JSON.stringify(context), /contractHash/);
+    return fauxAssistantMessage(JSON.stringify({ version: 1, bundleHash: bundleHashes.at(-1), verdict: "pass", summary: "Synthetic fixture evidence checked; no live scientific review.", findings: [] }));
+  };
+  fake.setResponses([readStep, verdictStep, readStep, verdictStep]);
+  let definition: any;
+  registerExperimentWorkflow({ registerTool: (tool: any) => { definition = tool; }, on() {} } as unknown as ExtensionAPI);
+  const ctx = { cwd, mode: "print", hasUI: false, model: fake.getModel(), modelRegistry: new ModelRegistry(parent), ui: { setStatus() {} } } as unknown as ExtensionContext;
+  const baseline = await definition.execute("baseline", { action: "run", slug: input.slug, kind: "baseline" }, undefined, undefined, ctx);
+  assert.equal(baseline.isError, undefined, baseline.content[0].text);
+  const cached = await definition.execute("cached", { action: "run", slug: input.slug, kind: "baseline" }, undefined, undefined, ctx);
+  assert.equal(cached.isError, undefined); assert.equal(fake.state.callCount, 2);
+  const closed = await definition.execute("close", { action: "close", slug: input.slug }, undefined, undefined, ctx);
+  assert.equal(closed.isError, undefined, closed.content[0].text); assert.equal(fake.state.callCount, 4);
+  assert.ok(toolNames.every(names => names.length === 1 && names[0] === "experiment_read"), JSON.stringify(toolNames));
+  assert.match(systemPrompts[0]!, /critic/); assert.match(systemPrompts[1]!, /auditor/);
+  const state = await runtime.status(cwd, input.slug);
+  assert.equal(state.state.state, "completed"); assert.deepEqual(state.state.reviews!.map(ref => ref.verdict), ["pass", "pass"]);
+  const ref = state.state.reviews![0]!; const review = await runtime.verifyReview(state, ref);
+  assert.equal(review.reviewer!.provider, "review-fixture"); assert.equal(review.reviewer!.model, "fixture-model"); assert.ok(review.reviewer!.sessionPath); assert.ok(review.usage);
+  assert.match(await readFile(join(cwd, review.reviewer!.sessionPath!), "utf8"), /experiment_read/);
+  assert.ok(baseline.usage); assert.ok(closed.usage); assert.equal(cached.usage, undefined);
+});
+test("missing reviewer model seals error evidence and never grants a review pass", async t => {
+  const cwd = await mkdtemp(join(tmpdir(), "review-no-model-")); t.after(() => rm(cwd, { recursive: true, force: true }));
+  const agentDir = join(cwd, "agent"); await mkdir(agentDir);
+  const previous = process.env.PI_CODING_AGENT_DIR; process.env.PI_CODING_AGENT_DIR = agentDir;
+  t.after(() => { if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR; else process.env.PI_CODING_AGENT_DIR = previous; });
+  await writeFile(join(cwd, "bench.mjs"), "console.log('fixture');");
+  const runtime = await engine(); const experiment = await runtime.create(cwd, { slug: "no-model", hypothesis: "Fixture", argv: [process.execPath, "bench.mjs"], filesInScope: ["bench.mjs"], metric: { source: "stdout", key: "score", unit: "score", direction: "max" }, environment: "Fixture" }); await runtime.approve(cwd, "no-model");
+  const ctx = { cwd, modelRegistry: { getRegisteredProviderIds: () => [] } } as unknown as ExtensionContext;
+  const result = await performExperimentReview(ctx, experiment, "plan"); assert.equal(result.verdict, "error"); assert.match(result.summary, /No available critic model/);
+  const current = await runtime.status(cwd, "no-model"); assert.equal(current.state.receipts.length, 0); assert.equal(current.state.activeReview, undefined);
+});
+
+test("review cancellation returns without accepting a verdict even if a provider never settles", async () => {
+  const controller = new AbortController(); let aborts = 0;
+  const session = { messages: [], prompt: async () => new Promise<void>(() => {}), subscribe: () => () => {}, abort: async () => { aborts++; } };
+  const result = consumeReviewSession(session as any, "Fixture review", controller.signal);
+  controller.abort();
+  const output = await result;
+  assert.match(output.error!, /cancelled/); assert.equal(output.value, undefined); assert.equal(aborts, 1);
+});

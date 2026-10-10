@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hypatia · Design Elevation Blueprint (Huashu-Design)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Studio Controls Bar */
+      --studio-bg: #0C0D10;
+      --studio-border: rgba(255, 255, 255, 0.1);
+      --studio-text: #F0F2F5;
+      --studio-muted: #8E929E;
+
+      /* Dark Theme (Byzantine Velvet & Imperial Crimson) */
+      --bg: #120D0E;
+      --surface: #1B1315;
+      --surface-elevated: #241A1C;
+      --surface-subtle: rgba(255, 255, 255, 0.03);
+      --border: #332124;
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-accent: rgba(217, 59, 48, 0.35);
+      --text: #ECE5E0;
+      --text-muted: #9C8C8F;
+      --text-dim: #6E6163;
+      --primary: #D93B30; /* Imperial Cinnabar */
+      --primary-hover: #E34D42;
+      --primary-soft: rgba(217, 59, 48, 0.12);
+      --primary-glow: rgba(217, 59, 48, 0.18);
+      --code-bg: #0C0809;
+      --tag-bg: rgba(217, 59, 48, 0.08);
+
+      --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-display: 'Cinzel', serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+      --radius: 8px;
+    }
+
+    body.theme-light {
+      /* Light Theme (Alexandria Papyrus & Vermilion Seal) */
+      --bg: #F8F5EE;
+      --surface: #EFE9DD;
+      --surface-elevated: #FFFFFF;
+      --surface-subtle: rgba(0, 0, 0, 0.02);
+      --border: #DBD3C2;
+      --border-subtle: rgba(0, 0, 0, 0.08);
+      --border-accent: rgba(184, 62, 44, 0.3);
+      --text: #1C1D20;
+      --text-muted: #6E695E;
+      --text-dim: #999386;
+      --primary: #B83E2C;
+      --primary-hover: #A33322;
+      --primary-soft: rgba(184, 62, 44, 0.08);
+      --primary-glow: rgba(184, 62, 44, 0.12);
+      --code-bg: #211E1D;
+      --tag-bg: rgba(184, 62, 44, 0.06);
+    }
+
+    body {
+      background: var(--studio-bg);
+      color: var(--studio-text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* ─── Top Studio Controller Bar ─── */
+    .studio-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(12, 13, 16, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--studio-border);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .studio-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .studio-pill {
+      background: var(--primary);
+      color: #FFF;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .studio-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-control {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--studio-text);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-control:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-control.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #FFF;
+    }
+
+    /* ─── Main Preview Canvas ─── */
+    .canvas-container {
+      flex: 1;
+      padding: 32px 16px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: radial-gradient(circle at 50% 10%, rgba(217, 59, 48, 0.05), transparent 40%),
+                  radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.02), transparent 50%),
+                  #08090C;
+    }
+
+    .viewport-frame {
+      width: 100%;
+      max-width: 1180px;
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 30px 100px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      transition: max-width 0.3s ease;
+      position: relative;
+    }
+
+    /* ─── Elevated Navigation Bar ─── */
+    .proto-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(18, 13, 14, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      transition: all 0.2s ease;
+    }
+
+    body.theme-light .proto-nav {
+      background: rgba(248, 245, 238, 0.85);
+    }
+
+    .proto-nav-inner {
+      max-width: 1024px;
+      margin: 0 auto;
+      height: 60px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .proto-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .proto-astrolabe {
+      width: 28px;
+      height: 28px;
+      color: var(--primary);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .proto-brand:hover .proto-astrolabe {
+      transform: rotate(45deg);
+    }
+
+    .proto-brand-title {
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: var(--text);
+    }
+
+    .proto-badge-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid var(--border-accent);
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+
+    .proto-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 13.5px;
+    }
+
+    .proto-nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease;
+      font-weight: 400;
+    }
+
+    .proto-nav-link:hover {
+      color: var(--text);
+    }
+
+    .proto-theme-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .proto-theme-btn:hover {
+      background: var(--surface-elevated);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    /* ─── Hero Section ─── */
+    .proto-hero {
+      padding: 80px 24px 64px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Ambient Glow Behind Hero */
+    .hero-glow-layer {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 340px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, rgba(217, 59, 48, 0.02) 60%, transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(40px);
+    }
+
+    .proto-h1 {
+      position: relative;
+      z-index: 1;
+      font-size: 54px;
+      line-height: 1.12;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: var(--text);
+      text-wrap: balance;
+    }
+
+    .font-serif-hero {
+      font-family: var(--font-serif);
+      font-weight: 600;
+      font-style: italic;
+      color: var(--primary);
+      letter-spacing: -0.01em;
+    }
+
+    .proto-lead {
+      position: relative;
+      z-index: 1;
+      margin-top: 20px;
+      font-size: 18px;
+      line-height: 1.65;
+      color: var(--text-muted);
+      max-width: 680px;
+      text-wrap: pretty;
+    }
+
+    .proto-runtime-tag {
+      position: relative;
+      z-index: 1;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-dim);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .proto-runtime-tag a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .proto-runtime-tag a:hover {
+      text-decoration: underline;
+    }
+
+    /* ─── Terminal Command Bar ─── */
+    .proto-install-box {
+      position: relative;
+      z-index: 1;
+      margin-top: 36px;
+      width: 100%;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .install-tab-row {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .install-tab {
+      padding: 6px 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .install-tab:hover {
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .install-tab.active {
+      background: var(--surface);
+      color: var(--primary);
+      border-color: var(--border);
+      font-weight: 600;
+    }
+
+    .install-code-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0 8px 8px 8px;
+      padding: 12px 18px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .install-code-box:hover {
+      border-color: var(--border-accent);
+      background: var(--surface-elevated);
+    }
+
+    .code-prompt-sign {
+      color: var(--primary);
+      user-select: none;
+      margin-right: 8px;
+    }
+
+    .code-text {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+
+    .copy-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.2);
+      transition: all 0.15s;
+    }
+
+    .install-code-box:hover .copy-indicator {
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    /* CTA Buttons */
+    .proto-cta-row {
+      position: relative;
+      z-index: 1;
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .btn-hero-primary {
+      background: var(--primary);
+      color: #FFF;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 7px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 20px var(--primary-glow);
+      transition: all 0.18s ease;
+    }
+
+    .btn-hero-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-hero-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 22px;
+      border-radius: 7px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.18s ease;
+    }
+
+    .btn-hero-secondary:hover {
+      background: var(--surface-subtle);
+      border-color: var(--text-muted);
+    }
+
+    /* ─── Elevated Terminal Frame ─── */
+    .proto-terminal-wrap {
+      position: relative;
+      z-index: 1;
+      margin-top: 56px;
+      width: 100%;
+      border-radius: 12px;
+      padding: 1px;
+      background: linear-gradient(180deg, var(--border-accent), var(--border-subtle) 35%, rgba(0, 0, 0, 0.4) 100%);
+      box-shadow: 0 35px 90px rgba(0, 0, 0, 0.8),
+                  0 0 60px var(--primary-glow);
+    }
+
+    .proto-terminal-inner {
+      background: var(--code-bg);
+      border-radius: 11px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.6);
+    }
+
+    .terminal-header {
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .terminal-dots {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .t-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .t-dot.red { background: #FF5F56; }
+    .t-dot.yellow { background: #FFBD2E; }
+    .t-dot.green { background: #27C93F; }
+
+    .terminal-tab-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .terminal-body {
+      padding: 32px 36px;
+      text-align: left;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .ascii-h-logo {
+      color: var(--primary);
+      font-size: 10px;
+      line-height: 1.05;
+      letter-spacing: 0.1em;
+      margin: 16px 0;
+      opacity: 0.95;
+      user-select: none;
+    }
+
+    .t-status-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 16px;
+      margin-top: 24px;
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    .t-status-badge {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* ─── Section Header Common ─── */
+    .proto-section {
+      padding: 72px 32px;
+      max-width: 1024px;
+      margin: 0 auto;
+    }
+
+    .section-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--primary);
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .section-h2 {
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      text-align: center;
+      color: var(--text);
+    }
+
+    .section-desc {
+      margin-top: 12px;
+      font-size: 16px;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ─── Five Roles Catalog ─── */
+    .roles-catalog {
+      margin-top: 48px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 280px 1fr;
+    }
+
+    .roles-index-col {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .role-btn {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px;
+      border: none;
+      border-bottom: 1px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-muted);
+      text-align: left;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.16s ease;
+    }
+
+    .role-btn:last-child {
+      border-bottom: none;
+    }
+
+    .role-btn:hover, .role-btn.active {
+      background: var(--surface-subtle);
+      color: var(--text);
+      padding-left: 28px;
+    }
+
+    .role-btn.active {
+      border-left: 2px solid var(--primary);
+    }
+
+    .role-btn-id {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .role-btn.active .role-btn-id {
+      color: var(--primary);
+    }
+
+    .role-btn-name {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .role-btn-action {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      background: var(--tag-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .role-dossier-panel {
+      padding: 40px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 280px;
+    }
+
+    .dossier-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: var(--primary);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .dossier-title {
+      margin-top: 14px;
+      font-family: var(--font-serif);
+      font-size: 44px;
+      font-style: italic;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .dossier-summary {
+      margin-top: 16px;
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--text);
+      max-width: 580px;
+    }
+
+    .dossier-detail {
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text-muted);
+      max-width: 580px;
+    }
+
+    .dossier-divider {
+      width: 44px;
+      height: 1px;
+      background: var(--primary);
+      margin-top: 24px;
+    }
+
+    /* ─── Workflows Editorial Matrix ─── */
+    .workflows-matrix {
+      margin-top: 48px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .wf-column {
+      padding: 28px 24px;
+      border-right: 1px solid var(--border);
+    }
+
+    .wf-column:last-child {
+      border-right: none;
+    }
+
+    .wf-col-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .wf-col-title {
+      font-family: var(--font-serif);
+      font-size: 21px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .wf-col-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .wf-col-subtitle {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .wf-entry {
+      border-top: 1px solid var(--border-subtle);
+      padding: 16px 0;
+      transition: background 0.15s ease;
+    }
+
+    .wf-cmd {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .wf-desc {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--text-muted);
+    }
+
+    /* ─── REDESIGNED: Sources Archival Evidence Matrix ─── */
+    .sources-elevation-box {
+      margin-top: 48px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .sources-header-bar {
+      padding: 14px 24px;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+    }
+
+    .sources-live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #3FB950;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #3FB950;
+      box-shadow: 0 0 8px #3FB950;
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .sources-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .source-cell {
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border-subtle);
+      border-right: 1px solid var(--border-subtle);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .source-cell:nth-child(2n) {
+      border-right: none;
+    }
+
+    .source-cell:nth-last-child(-n+2) {
+      border-bottom: none;
+    }
+
+    .source-cell:hover {
+      background: var(--surface-elevated);
+    }
+
+    .source-top-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .source-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .source-name a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .source-name a:hover {
+      color: var(--primary);
+    }
+
+    .protocol-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--tag-bg);
+      border: 1px solid var(--border-accent);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.06em;
+    }
+
+    .source-desc {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .source-scope-tokens {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .scope-token {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    /* ─── Footer Section ─── */
+    .proto-footer-cta {
+      padding: 80px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .provenance-seal {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 16px;
+      background: var(--primary-soft);
+      border: 1px solid var(--border-accent);
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .footer-base {
+      padding: 24px 32px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .footer-base a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-base a:hover {
+      color: var(--text);
+    }
+
+    /* ─── Side-by-Side Comparison Drawer ─── */
+    .compare-banner {
+      background: rgba(217, 59, 48, 0.08);
+      border: 1px solid var(--border-accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 32px 32px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .compare-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .compare-details {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 860px) {
+      .proto-h1 { font-size: 38px; }
+      .roles-catalog { grid-template-columns: 1fr; }
+      .roles-index-col { border-right: none; border-bottom: 1px solid var(--border); }
+      .workflows-matrix { grid-template-columns: 1fr; }
+      .wf-column { border-right: none; border-bottom: 1px solid var(--border); }
+      .sources-grid { grid-template-columns: 1fr; }
+      .source-cell { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Top Studio Controller Bar ─── -->
+  <header class="studio-bar">
+    <div class="studio-brand">
+      <span class="studio-pill">Huashu · Design</span>
+      <span>Hypatia Homepage Elevation Preview</span>
+    </div>
+
+    <div class="studio-controls">
+      <!-- Theme Toggle -->
+      <button class="btn-control" id="btn-theme-toggle" title="Toggle Light / Dark mode">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <span id="theme-btn-label">Alexandria Papyrus (Light)</span>
+      </button>
+
+      <!-- Viewport Width Switcher -->
+      <button class="btn-control active" id="btn-vp-desktop" onclick="setViewport('1180px')">Desktop</button>
+      <button class="btn-control" id="btn-vp-tablet" onclick="setViewport('780px')">Tablet</button>
+      <button class="btn-control" id="btn-vp-full" onclick="setViewport('100%')">Full Width</button>
+    </div>
+  </header>
+
+  <!-- ─── Canvas Viewport ─── -->
+  <main class="canvas-container">
+    <div class="viewport-frame" id="viewport-box">
+
+      <!-- ─── Elevation 1: Glassmorphic Sticky Header ─── -->
+      <nav class="proto-nav">
+        <div class="proto-nav-inner">
+          <a href="#" class="proto-brand">
+            <!-- Astrolabe SVG Logo -->
+            <svg class="proto-astrolabe" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="16" cy="16" r="13" stroke-width="1.8"></circle>
+              <circle cx="16" cy="16" r="8" stroke-dasharray="2 2" stroke-width="1.2"></circle>
+              <path d="M16 3v26M3 16h26"></path>
+              <circle cx="16" cy="16" r="3" fill="currentColor"></circle>
+              <path d="M7 7l18 18M7 25L25 7" stroke-width="1" stroke-opacity="0.4"></path>
+            </svg>
+            <span class="proto-brand-title">HYPATIA</span>
+            <span class="proto-badge-tag">v0.1.0</span>
+          </a>
+
+          <div class="proto-nav-links">
+            <a href="#" class="proto-nav-link">Docs</a>
+            <a href="https://github.com/TQuang122/hypatia" target="_blank" class="proto-nav-link">GitHub</a>
+            <button class="proto-theme-btn" id="canvas-theme-toggle" title="Toggle Theme">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ─── Elevation 2: Hero Section with Atmospheric Glow ─── -->
+      <section class="proto-hero">
+        <div class="hero-glow-layer"></div>
+
+        <h1 class="proto-h1">
+          Research-First Agent Shell<br>
+          <span class="font-serif-hero">for Scientific Rigor.</span>
+        </h1>
+
+        <p class="proto-lead">
+          Hypatia wraps stock Pi into an autonomous discovery loop. Equipped with adversarial auditors, primary-source synthesis, and reproducible provenance sidecars.
+        </p>
+
+        <p class="proto-runtime-tag">
+          Built on <a href="https://github.com/TQuang122/hypatia" target="_blank">Pi Runtime</a> · Open source & reproducible
+        </p>
+
+        <!-- Interactive Install Box -->
+        <div class="proto-install-box">
+          <div class="install-tab-row">
+            <button class="install-tab active" onclick="switchInstall(this, 'curl -fsSL https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.sh | bash')">curl</button>
+            <button class="install-tab" onclick="switchInstall(this, 'irm https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.ps1 | iex')">PowerShell</button>
+            <button class="install-tab" onclick="switchInstall(this, 'npm install -g @TQuang122/hypatia')">npm</button>
+          </div>
+          <div class="install-code-box" onclick="copyInstallCmd()">
+            <span class="code-prompt-sign">$</span>
+            <span class="code-text" id="cmd-display">curl -fsSL https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.sh | bash</span>
+            <span class="copy-indicator" id="copy-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="proto-cta-row">
+          <a href="#" class="btn-hero-primary">
+            <span>Get Started</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a href="https://github.com/TQuang122/hypatia" target="_blank" class="btn-hero-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            <span>GitHub</span>
+          </a>
+        </div>
+
+        <!-- ─── Elevation 3: Framed Terminal with Depth ─── -->
+        <div class="proto-terminal-wrap">
+          <div class="proto-terminal-inner">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="t-dot red"></span>
+                <span class="t-dot yellow"></span>
+                <span class="t-dot green"></span>
+              </div>
+              <div class="terminal-tab-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+                <span>π - Friday · Hypatia REPL</span>
+              </div>
+              <div style="width: 40px;"></div>
+            </div>
+
+            <div class="terminal-body">
+              <div style="display: flex; align-items: flex-start; gap: 28px;">
+                <!-- ASCII Matrix Logo -->
+                <pre class="ascii-h-logo">
+ ██   ██  ██████  ██████   █████  ████████ ██  █████
+ ██   ██ ██    ██ ██   ██ ██   ██    ██    ██ ██   ██
+ ███████ ██    ██ ██████  ███████    ██    ██ ███████
+ ██   ██ ██    ██ ██      ██   ██    ██    ██ ██   ██
+ ██   ██  ██████  ██      ██   ██    ██    ██ ██   ██
+                </pre>
+
+                <div style="padding-top: 10px;">
+                  <div style="font-size: 15px; font-weight: 600; color: var(--text);">Hypatia <span style="font-size: 12px; color: var(--primary); font-family: var(--font-mono);">v0.1.0</span></div>
+                  <div style="color: var(--text-dim); font-size: 12px; margin-top: 2px;">Alexandrian Scholarly Agent Framework</div>
+                  <div style="margin-top: 14px; font-size: 12.5px; color: var(--text-muted);">
+                    Autonomous multi-agent protocol active.<br>
+                    Primary sources loaded: <span style="color: var(--text);">arXiv, Semantic Scholar, alphaXiv</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 24px; padding: 12px 16px; background: rgba(255,255,255,0.02); border-left: 2px solid var(--primary); border-radius: 0 4px 4px 0;">
+                <span style="color: var(--primary); font-weight: 600;">&gt;</span> <span style="color: var(--text-muted);">Ask about papers, sources, or findings...</span>
+              </div>
+
+              <div class="t-status-line">
+                <span class="t-status-badge">gpt-6-luna</span>
+                <span>·</span>
+                <span>medium</span>
+                <span>·</span>
+                <span>ctx 0%</span>
+                <span style="margin-left: auto; color: var(--text-dim);">/lit · /deepresearch · /review · /audit</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Section 2: Five Roles. Clear Boundaries. ─── -->
+      <section class="proto-section">
+        <p class="section-eyebrow">Specialists / Called When Useful</p>
+        <h2 class="section-h2">
+          Five roles. <span class="font-serif-hero">Clear boundaries.</span>
+        </h2>
+        <p class="section-desc">
+          Hypatia can delegate to these specialists when a workflow benefits from it. Narrow requests stay lead-owned.
+        </p>
+
+        <div class="roles-catalog">
+          <div class="roles-index-col">
+            <button class="role-btn active" onclick="selectRole(this, 'auditor')">
+              <span class="role-btn-id">A</span>
+              <span class="role-btn-name">Auditor</span>
+              <span class="role-btn-action">VERIFY</span>
+            </button>
+            <button class="role-btn" onclick="selectRole(this, 'evidence-scout')">
+              <span class="role-btn-id">B</span>
+              <span class="role-btn-name">Evidence Scout</span>
+              <span class="role-btn-action">FIND</span>
+            </button>
+            <button class="role-btn" onclick="selectRole(this, 'scribe')">
+              <span class="role-btn-id">C</span>
+              <span class="role-btn-name">Scribe</span>
+              <span class="role-btn-action">DRAFT</span>
+            </button>
+            <button class="role-btn" onclick="selectRole(this, 'critic')">
+              <span class="role-btn-id">D</span>
+              <span class="role-btn-name">Critic</span>
+              <span class="role-btn-action">REVIEW</span>
+            </button>
+            <button class="role-btn" onclick="selectRole(this, 'reviser')">
+              <span class="role-btn-id">E</span>
+              <span class="role-btn-name">Reviser</span>
+              <span class="role-btn-action">REVISE</span>
+            </button>
+          </div>
+
+          <div class="role-dossier-panel" id="dossier-display">
+            <p class="dossier-tag">ROLE / AUDIT</p>
+            <h3 class="dossier-title">Auditor</h3>
+            <p class="dossier-summary">Checks source support for claims and removes what the evidence cannot support.</p>
+            <p class="dossier-detail">Checks URLs and paper identity, then ties claims, results, and tables to inspectable evidence.</p>
+            <div class="dossier-divider"></div>
+          </div>
+        </div>
+
+        <p style="margin-top: 16px; font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 8px;">
+          <span style="width: 18px; height: 1px; background: var(--primary);"></span>
+          An index of capabilities, not a required workflow order.
+        </p>
+      </section>
+
+      <!-- ─── Section 3: Research Workflows Matrix ─── -->
+      <section class="proto-section">
+        <p class="section-eyebrow">Research Workflows</p>
+        <h2 class="section-h2">
+          Find the next useful <span class="font-serif-hero">command.</span>
+        </h2>
+        <p class="section-desc">
+          Run as slash commands in the REPL or as <code>hypatia &lt;workflow&gt;</code> from your shell.
+        </p>
+
+        <div class="workflows-matrix">
+          <!-- Col 1 -->
+          <div class="wf-column">
+            <div class="wf-col-header">
+              <h3 class="wf-col-title">Explore</h3>
+              <span class="wf-col-num">01</span>
+            </div>
+            <p class="wf-col-subtitle">Find & connect sources</p>
+            <div class="wf-entry">
+              <code class="wf-cmd">/deepresearch</code>
+              <p class="wf-desc">Plan-first investigation across papers, web, and code, with parallel evidence scouts when needed.</p>
+            </div>
+            <div class="wf-entry">
+              <code class="wf-cmd">/lit</code>
+              <p class="wf-desc">Literature review from primary sources with consensus mapping across claims.</p>
+            </div>
+            <div class="wf-entry">
+              <code class="wf-cmd">/compare</code>
+              <p class="wf-desc">Side-by-side source comparison with agreement and conflict matrix.</p>
+            </div>
+          </div>
+
+          <!-- Col 2 -->
+          <div class="wf-column">
+            <div class="wf-col-header">
+              <h3 class="wf-col-title">Assess</h3>
+              <span class="wf-col-num">02</span>
+            </div>
+            <p class="wf-col-subtitle">Review & reproduce work</p>
+            <div class="wf-entry">
+              <code class="wf-cmd">/review</code>
+              <p class="wf-desc">Internal research critique with severity scores and a prioritized revision plan.</p>
+            </div>
+            <div class="wf-entry">
+              <code class="wf-cmd">/audit</code>
+              <p class="wf-desc">Paper-to-code mismatch audit for empirical reproducibility claims.</p>
+            </div>
+            <div class="wf-entry">
+              <code class="wf-cmd">/replicate</code>
+              <p class="wf-desc">Replication plan with explicit environment choice before any execution.</p>
+            </div>
+          </div>
+
+          <!-- Col 3 -->
+          <div class="wf-column">
+            <div class="wf-col-header">
+              <h3 class="wf-col-title">Create & test</h3>
+              <span class="wf-col-num">03</span>
+            </div>
+            <p class="wf-col-subtitle">Turn evidence into next steps</p>
+            <div class="wf-entry">
+              <code class="wf-cmd">/recipe</code>
+              <p class="wf-desc">Ranked ML training recipes grounded in papers, datasets, docs, and verified code.</p>
+            </div>
+            <div class="wf-entry">
+              <code class="wf-cmd">/draft</code>
+              <p class="wf-desc">Polished paper-style draft with inline citations tied to inspectable findings.</p>
+            </div>
+            <div class="wf-entry">
+              <code class="wf-cmd">/autoresearch</code>
+              <p class="wf-desc">Bounded scientific loop: hypothesize, experiment, measure, repeat.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Elevation 4: REDESIGNED "Sources: Archival Evidence Matrix" ─── -->
+      <section class="proto-section">
+        <p class="section-eyebrow">Evidence Architecture</p>
+        <h2 class="section-h2">
+          Archival Evidence <span class="font-serif-hero">Matrix.</span>
+        </h2>
+        <p class="section-desc">
+          Hypatia retrieves only verifiable, primary-source artifacts. Zero hallucinated references.
+        </p>
+
+        <div class="sources-elevation-box">
+          <div class="sources-header-bar">
+            <span>Primary Source Ingestion Protocols</span>
+            <span class="sources-live-badge">
+              <span class="pulse-dot"></span>
+              Live Corpus Feeds
+            </span>
+          </div>
+
+          <div class="sources-grid">
+            <!-- Source 1 -->
+            <div class="source-cell">
+              <div class="source-top-line">
+                <span class="source-name">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  Academic Literature Corpus
+                </span>
+                <span class="protocol-tag">REST & GRAPHQL</span>
+              </div>
+              <p class="source-desc">
+                Direct querying with canonical identifiers across global citation graphs. Normalized abstracts, citation traversals, and venue verification.
+              </p>
+              <div class="source-scope-tokens">
+                <span class="scope-token">Semantic Scholar</span>
+                <span class="scope-token">OpenAlex</span>
+                <span class="scope-token">arXiv</span>
+                <span class="scope-token">PubMed</span>
+                <span class="scope-token">Europe PMC</span>
+                <span class="scope-token">Crossref</span>
+              </div>
+            </div>
+
+            <!-- Source 2 -->
+            <div class="source-cell">
+              <div class="source-top-line">
+                <span class="source-name">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></polygon></svg>
+                  <a href="https://www.alphaxiv.org/" target="_blank">alphaXiv Integration</a>
+                </span>
+                <span class="protocol-tag">DIRECT PROTOCOL</span>
+              </div>
+              <p class="source-desc">
+                Full-paper inspection with interactive author commentary, inline margin notes, and community Q&A. Real-time preprint analysis.
+              </p>
+              <div class="source-scope-tokens">
+                <span class="scope-token">Preprint Annotations</span>
+                <span class="scope-token">Author Discussions</span>
+                <span class="scope-token">LaTeX AST</span>
+              </div>
+            </div>
+
+            <!-- Source 3 -->
+            <div class="source-cell">
+              <div class="source-top-line">
+                <span class="source-name">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg>
+                  Hugging Face Weights & Hub
+                </span>
+                <span class="protocol-tag">HUB API</span>
+              </div>
+              <p class="source-desc">
+                Dataset card schemas, model configuration inspection, and repository code trees. Audits code-to-paper consistency for ML weights.
+              </p>
+              <div class="source-scope-tokens">
+                <span class="scope-token">Dataset Schemas</span>
+                <span class="scope-token">Model Configs</span>
+                <span class="scope-token">PyTorch Checkpoints</span>
+              </div>
+            </div>
+
+            <!-- Source 4 -->
+            <div class="source-cell">
+              <div class="source-top-line">
+                <span class="source-name">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  Primary Web & Open Access
+                </span>
+                <span class="protocol-tag">HEADLESS SCRAPER</span>
+              </div>
+              <p class="source-desc">
+                High-fidelity full-text PDF parsing and institution page extraction. Clean markdown conversion with table preservation.
+              </p>
+              <div class="source-scope-tokens">
+                <span class="scope-token">Exa Neural Search</span>
+                <span class="scope-token">PDF Table Extractor</span>
+                <span class="scope-token">DOAB Directory</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Footer CTA ─── -->
+      <section class="proto-footer-cta">
+        <span class="provenance-seal">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Every claim backed by an inspectable sidecar
+        </span>
+        <h2 style="font-size: 32px; font-weight: 700; color: var(--text); margin-bottom: 8px;">
+          Built for Scientific Rigor.
+        </h2>
+        <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 28px;">
+          Powered by Pi Runtime and alphaXiv. Open source, deterministic, reproducible.
+        </p>
+
+        <div style="display: flex; justify-content: center; gap: 14px;">
+          <a href="#" class="btn-hero-primary">Get Started</a>
+          <a href="https://github.com/TQuang122/hypatia" target="_blank" class="btn-hero-secondary">View on GitHub</a>
+        </div>
+      </section>
+
+      <footer class="footer-base">
+        <span>&copy; 2026 Hypatia · Research-First Agent Shell</span>
+        <div style="display: flex; gap: 20px;">
+          <a href="#">Docs</a>
+          <a href="https://github.com/TQuang122/hypatia" target="_blank">GitHub</a>
+          <a href="https://www.alphaxiv.org/" target="_blank">alphaXiv</a>
+        </div>
+      </footer>
+
+    </div>
+  </main>
+
+  <!-- ─── Interactive Client Script ─── -->
+  <script>
+    const roleData = {
+      auditor: {
+        tag: "ROLE / AUDIT",
+        title: "Auditor",
+        summary: "Checks source support for claims and removes what the evidence cannot support.",
+        detail: "Checks URLs and paper identity, then ties claims, results, and tables to inspectable evidence."
+      },
+      "evidence-scout": {
+        tag: "ROLE / DISCOVERY",
+        title: "Evidence Scout",
+        summary: "Searches papers, web sources, repos, and datasets for relevant evidence.",
+        detail: "Reads relevant sources, labels inferences, and reports coverage gaps for the lead agent."
+      },
+      scribe: {
+        tag: "ROLE / DRAFT",
+        title: "Scribe",
+        summary: "Shapes supplied research files into a structured brief or draft.",
+        detail: "Preserves caveats and open questions, writes only from supplied evidence, and leaves citations to the auditor."
+      },
+      critic: {
+        tag: "ROLE / REVIEW",
+        title: "Critic",
+        summary: "Reviews novelty, empirical rigor, clarity, and reproducibility.",
+        detail: "Returns severity-graded findings, questions for the authors, and a prioritized revision plan."
+      },
+      reviser: {
+        tag: "ROLE / REVISION",
+        title: "Reviser",
+        summary: "Applies high-priority critique findings with small, targeted edits.",
+        detail: "Does not add claims, sources, or citations; escalates changes that need new evidence or broader rewriting."
+      }
+    };
+
+    function selectRole(btn, roleKey) {
+      document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const data = roleData[roleKey];
+      if (!data) return;
+
+      const panel = document.getElementById('dossier-display');
+      panel.innerHTML = `
+        <p class="dossier-tag">${data.tag}</p>
+        <h3 class="dossier-title">${data.title}</h3>
+        <p class="dossier-summary">${data.summary}</p>
+        <p class="dossier-detail">${data.detail}</p>
+        <div class="dossier-divider"></div>
+      `;
+    }
+
+    function switchInstall(tab, cmd) {
+      document.querySelectorAll('.install-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('cmd-display').textContent = cmd;
+    }
+
+    function copyInstallCmd() {
+      const cmd = document.getElementById('cmd-display').textContent;
+      navigator.clipboard.writeText(cmd).then(() => {
+        const btn = document.getElementById('copy-btn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--primary)"><polyline points="20 6 9 17 4 12"/></svg><span style="color:var(--primary);font-weight:600">Copied!</span>`;
+        setTimeout(() => { btn.innerHTML = orig; }, 1800);
+      });
+    }
+
+    function setViewport(w) {
+      const box = document.getElementById('viewport-box');
+      box.style.maxWidth = w;
+      document.querySelectorAll('.btn-control[id^="btn-vp-"]').forEach(b => b.classList.remove('active'));
+      if (w === '1180px') document.getElementById('btn-vp-desktop').classList.add('active');
+      if (w === '780px') document.getElementById('btn-vp-tablet').classList.add('active');
+      if (w === '100%') document.getElementById('btn-vp-full').classList.add('active');
+    }
+
+    // Toggle Theme (Dark / Light)
+    const btnTheme = document.getElementById('btn-theme-toggle');
+    const canvasThemeToggle = document.getElementById('canvas-theme-toggle');
+    const label = document.getElementById('theme-btn-label');
+
+    function toggleTheme() {
+      const isLight = document.body.classList.toggle('theme-light');
+      if (isLight) {
+        label.textContent = "Byzantine Velvet (Dark)";
+      } else {
+        label.textContent = "Alexandria Papyrus (Light)";
+      }
+    }
+
+    btnTheme.addEventListener('click', toggleTheme);
+    canvasThemeToggle.addEventListener('click', toggleTheme);
+  </script>
+</body>
+</html>

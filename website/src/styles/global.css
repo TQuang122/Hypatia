@@ -1,0 +1,392 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/ibm-plex-sans";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'IBM Plex Sans Variable', sans-serif;
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: oklch(0.975 0.015 88);
+    --foreground: oklch(0.22 0.015 260);
+    --card: oklch(0.950 0.018 85);
+    --card-foreground: oklch(0.22 0.015 260);
+    --popover: oklch(0.950 0.018 85);
+    --popover-foreground: oklch(0.22 0.015 260);
+    --primary: oklch(0.55 0.165 35);
+    --primary-foreground: oklch(0.98 0.005 85);
+    --secondary: oklch(0.935 0.018 85);
+    --secondary-foreground: oklch(0.22 0.015 260);
+    --muted: oklch(0.935 0.018 85);
+    --muted-foreground: oklch(0.52 0.015 80);
+    --accent: oklch(0.935 0.018 85);
+    --accent-foreground: oklch(0.22 0.015 260);
+    --destructive: oklch(0.55 0.165 35);
+    --border: oklch(0.90 0.020 85);
+    --input: oklch(0.90 0.020 85);
+    --ring: oklch(0.55 0.165 35);
+    --chart-1: oklch(0.55 0.165 35);
+    --chart-2: oklch(0.60 0.080 85);
+    --chart-3: oklch(0.65 0.070 145);
+    --chart-4: oklch(0.52 0.120 40);
+    --chart-5: oklch(0.22 0.015 260);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.950 0.018 85);
+    --sidebar-foreground: oklch(0.22 0.015 260);
+    --sidebar-primary: oklch(0.55 0.165 35);
+    --sidebar-primary-foreground: oklch(0.98 0.005 85);
+    --sidebar-accent: oklch(0.935 0.018 85);
+    --sidebar-accent-foreground: oklch(0.22 0.015 260);
+    --sidebar-border: oklch(0.90 0.020 85);
+    --sidebar-ring: oklch(0.55 0.165 35);
+}
+
+.dark {
+    --background: oklch(0.15 0.010 20);
+    --foreground: oklch(0.92 0.010 60);
+    --card: oklch(0.21 0.015 20);
+    --card-foreground: oklch(0.92 0.010 60);
+    --popover: oklch(0.21 0.015 20);
+    --popover-foreground: oklch(0.92 0.010 60);
+    --primary: oklch(0.62 0.190 28);
+    --primary-foreground: oklch(0.98 0.005 60);
+    --secondary: oklch(0.26 0.018 20);
+    --secondary-foreground: oklch(0.92 0.010 60);
+    --muted: oklch(0.26 0.018 20);
+    --muted-foreground: oklch(0.65 0.012 50);
+    --accent: oklch(0.26 0.018 20);
+    --accent-foreground: oklch(0.92 0.010 60);
+    --destructive: oklch(0.62 0.190 28);
+    --border: oklch(0.29 0.020 25);
+    --input: oklch(0.29 0.020 25);
+    --ring: oklch(0.62 0.190 28);
+    --chart-1: oklch(0.62 0.190 28);
+    --chart-2: oklch(0.65 0.120 75);
+    --chart-3: oklch(0.55 0.100 350);
+    --chart-4: oklch(0.70 0.140 30);
+    --chart-5: oklch(0.65 0.012 50);
+    --sidebar: oklch(0.21 0.015 20);
+    --sidebar-foreground: oklch(0.92 0.010 60);
+    --sidebar-primary: oklch(0.62 0.190 28);
+    --sidebar-primary-foreground: oklch(0.98 0.005 60);
+    --sidebar-accent: oklch(0.26 0.018 20);
+    --sidebar-accent-foreground: oklch(0.92 0.010 60);
+    --sidebar-border: oklch(0.29 0.020 25);
+    --sidebar-ring: oklch(0.62 0.190 28);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: clip;
+    }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+    overflow-x: clip;
+    }
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+}
+
+.prose h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--primary);
+}
+
+.prose p {
+  margin-bottom: 1rem;
+  line-height: 1.75;
+  color: var(--muted-foreground);
+}
+
+.prose ul {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.prose ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  list-style-type: decimal;
+}
+
+.prose li {
+  margin-bottom: 0.375rem;
+  line-height: 1.65;
+  color: var(--muted-foreground);
+}
+
+.prose code {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  background-color: var(--muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  color: var(--foreground);
+}
+
+.prose pre {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  margin-bottom: 1.25rem;
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  border: 1px solid var(--border);
+  background-color: var(--secondary) !important;
+  color: var(--card-foreground);
+}
+
+.prose .astro-code {
+  position: relative !important;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: auto;
+  background-color: var(--secondary) !important;
+  color: var(--card-foreground) !important;
+}
+
+.prose pre code {
+  display: inline-block;
+  min-width: max-content;
+  background: none !important;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+.prose .astro-code span {
+  background-color: transparent !important;
+}
+
+.prose pre .copy-code {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  color: var(--muted-foreground);
+  background: var(--background);
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.prose pre:hover .copy-code {
+  opacity: 1;
+}
+
+.prose .astro-code .copy-code {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  color: var(--muted-foreground);
+  background: var(--background);
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.prose .astro-code:hover .copy-code {
+  opacity: 1;
+}
+
+.prose .astro-code .copy-code:hover {
+  color: var(--primary);
+}
+
+.prose pre .copy-code:hover {
+  color: var(--primary);
+}
+
+.prose table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.prose th {
+  background-color: var(--card);
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
+}
+
+.prose td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.prose td code {
+  background-color: var(--muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.prose tr:nth-child(even) {
+  background-color: var(--card);
+}
+
+.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  opacity: 0.8;
+}
+
+.prose strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.prose hr {
+  border-color: var(--border);
+  margin: 2rem 0;
+}
+
+.prose blockquote {
+  border-left: 2px solid var(--muted-foreground);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.dark .astro-code {
+  background-color: var(--secondary) !important;
+}
+
+.dark .astro-code code span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.font-serif-hero {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  font-style: italic;
+}

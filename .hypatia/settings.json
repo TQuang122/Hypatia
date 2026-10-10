@@ -1,0 +1,7 @@
+{
+  "theme": "hypatia",
+  "tuiMode": "fullscreen",
+  "quietStartup": true,
+  "collapseChangelog": true,
+  "editorPaddingX": 1
+}

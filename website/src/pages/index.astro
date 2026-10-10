@@ -2,6 +2,7 @@
 import Layout from "@/layouts/main.astro"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { sitePath } from "@/lib/site-path"
 
 const workflows = [
   { command: "/deepresearch", description: "Plan-first investigation across papers, web, and code, with parallel evidence scouts when the topic needs them" },
@@ -153,7 +154,7 @@ const installCommands = [
         </div>
 
         <div class="flex flex-wrap items-center justify-center gap-3">
-          <a href="/docs/getting-started/installation">
+          <a href={sitePath("/docs/getting-started/installation")}>
             <Button client:load size="lg">Get Started</Button>
           </a>
           <a href="https://github.com/TQuang122/hypatia" target="_blank" rel="noopener noreferrer" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
@@ -163,7 +164,7 @@ const installCommands = [
 
 
         <p class="text-sm text-muted-foreground">
-          Need just the skills? <a href="/docs/getting-started/installation#skills-only" class="text-primary hover:underline">Install the skills-only bundle</a>.
+          Need just the skills? <a href={sitePath("/docs/getting-started/installation#skills-only")} class="text-primary hover:underline">Install the skills-only bundle</a>.
         </p>
       </div>
 
@@ -176,7 +177,7 @@ const installCommands = [
         <div id="hero-tilt-card" class="relative w-full max-w-4xl overflow-hidden rounded-2xl shadow-[0_35px_100px_-20px_rgba(0,0,0,0.95),0_0_60px_-15px_rgba(217,59,48,0.25)] transition-shadow duration-500 group-hover:shadow-[0_45px_120px_-15px_rgba(0,0,0,0.98),0_0_80px_-10px_rgba(217,59,48,0.4)]">
           <div class="relative overflow-hidden rounded-2xl">
             <img
-              src="/hypatia-hero.png"
+              src={sitePath("/hypatia-hero.png")}
               class="w-full block"
               alt="Hypatia CLI"
             />
@@ -320,7 +321,7 @@ const installCommands = [
         Built on <a href="https://github.com/earendil-works/pi" class="text-primary hover:underline">Pi</a>, with <a href="https://www.alphaxiv.org/" class="text-primary hover:underline">alphaXiv</a> and scholarly database integrations. Selected workflows can produce cited briefs with provenance sidecars.
       </p>
       <div class="flex flex-wrap items-center justify-center gap-3">
-        <a href="/docs/getting-started/installation">
+        <a href={sitePath("/docs/getting-started/installation")}>
           <Button client:load size="lg">Get Started</Button>
         </a>
         <a href="https://github.com/TQuang122/hypatia" target="_blank" rel="noopener noreferrer">

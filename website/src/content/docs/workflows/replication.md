@@ -28,7 +28,7 @@ hypatia replicate "paper or claim"
 ## How it works
 
 1. **Extract** -- The `evidence-scout` agent pulls implementation details from the paper and any linked code. If `CHANGELOG.md` exists, Hypatia reads its recent entries first.
-2. **Recipe pass** -- For ML training, fine-tuning, benchmark, or dataset-heavy targets, each claimed result is linked to the exact dataset, method, hyperparameters, compute assumptions, metric, and code path that produced it. Dataset availability and schema are checked when possible (see [Hugging Face Hub](/docs/tools/hugging-face)); unchecked details are marked `unverified`.
+2. **Recipe pass** -- For ML training, fine-tuning, benchmark, or dataset-heavy targets, each claimed result is linked to the exact dataset, method, hyperparameters, compute assumptions, metric, and code path that produced it. Dataset availability and schema are checked when possible (see [Hugging Face Hub](/hypatia/docs/tools/hugging-face)); unchecked details are marked `unverified`.
 3. **Plan** -- Hypatia lists the code, datasets, metrics, and environment needed, separates what is verified, inferred, and missing, and names the checks that will decide whether the replication succeeded.
 4. **Environment** -- Hypatia asks where to execute: local, a virtual environment, Docker, Modal (if the `modal` CLI is set up), RunPod (if `runpodctl` is installed and `RUNPOD_API_KEY` is set), or plan only. Nothing is installed or run before you choose.
 5. **Execute** -- In the chosen environment, Hypatia implements and runs the steps and saves notes, scripts, raw outputs, and results to disk.

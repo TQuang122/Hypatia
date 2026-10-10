@@ -44,4 +44,4 @@ One draft at `papers/<slug>.md` in Markdown, with LaTeX for equations, Markdown 
 
 ## Iteration
 
-Ask Hypatia to revise specific sections, add detail, or restructure the argument. To render the draft as HTML or PDF, see [Preview](/docs/tools/preview).
+Ask Hypatia to revise specific sections, add detail, or restructure the argument. To render the draft as HTML or PDF, see [Preview](/hypatia/docs/tools/preview).

@@ -83,7 +83,7 @@ An async launch receipt is not completion: consume the result and verify child o
 
 ## Running workflows from the CLI
 
-Every research workflow can also be run from the command line, for example `hypatia deepresearch "topic"`. See [CLI Commands](/docs/reference/cli-commands#workflow-commands).
+Every research workflow can also be run from the command line, for example `hypatia deepresearch "topic"`. See [CLI Commands](/hypatia/docs/reference/cli-commands#workflow-commands).
 
 For experiment setup in chat use `/experiments create <goal>`; use `create-json <path>` for saved contracts. `import <idea-file>` prepares a contract in chat; `import-json <idea-file> --contract <path>` loads one directly. `review <slug>` prefills a review-only chat request. New contracts require a critic before benchmarks and an auditor before closure.
 

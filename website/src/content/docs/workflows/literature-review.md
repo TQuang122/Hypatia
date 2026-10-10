@@ -40,4 +40,4 @@ hypatia lit "Anthropic interpretability team"
 
 Use `/lit` at the start of a project to see what has already been done, when preparing a related-work section, or to understand a lab's or author's body of work.
 
-For biomedical and clinical topics, see [Biomedical Literature Review](/docs/workflows/biomedical-literature-review) for research-only framing, evidence-type separation, and privacy boundaries.
+For biomedical and clinical topics, see [Biomedical Literature Review](/hypatia/docs/workflows/biomedical-literature-review) for research-only framing, evidence-type separation, and privacy boundaries.

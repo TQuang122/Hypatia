@@ -12,7 +12,8 @@ export default defineConfig({
     plugins: [tailwindcss()],
   },
   integrations: [react()],
-  site: 'https://github.com/TQuang122/hypatia',
+  site: 'https://tquang122.github.io',
+  base: '/hypatia',
   markdown: {
     shikiConfig: {
       themes: {

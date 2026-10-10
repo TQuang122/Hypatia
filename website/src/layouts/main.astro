@@ -1,5 +1,6 @@
 ---
 import "@/styles/global.css"
+import { sitePath } from "@/lib/site-path"
 import { ClientRouter } from "astro:transitions"
 
 interface Props {
@@ -19,10 +20,10 @@ const {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/png" sizes="128x128" href="/favicon.png?v=5" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=5" />
-    <link rel="shortcut icon" href="/favicon.ico?v=5" />
-    <link rel="apple-touch-icon" href="/favicon.png?v=5" />
+    <link rel="icon" type="image/png" sizes="128x128" href={sitePath("/favicon.png?v=5")} />
+    <link rel="icon" type="image/x-icon" href={sitePath("/favicon.ico?v=5")} />
+    <link rel="shortcut icon" href={sitePath("/favicon.ico?v=5")} />
+    <link rel="apple-touch-icon" href={sitePath("/favicon.png?v=5")} />
     <meta name="description" content={description} />
     <title>{title}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -45,7 +46,7 @@ const {
   <body class="flex min-h-screen flex-col bg-background text-foreground antialiased">
     <nav class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-[16px] transition-colors">
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="/" class="group flex items-center gap-3 no-underline">
+        <a href={sitePath("/")} class="group flex items-center gap-3 no-underline">
           <svg class="size-7 text-primary transition-transform duration-500 ease-out group-hover:rotate-45" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="16" cy="16" r="13" stroke-width="1.8"></circle>
             <circle cx="16" cy="16" r="8" stroke-dasharray="2 2" stroke-width="1.2"></circle>
@@ -57,7 +58,7 @@ const {
         </a>
         <div class="flex items-center gap-4 sm:gap-6">
           <a
-            href="/docs/getting-started/installation"
+            href={sitePath("/docs/getting-started/installation")}
             class:list={[
               "text-sm transition-colors hover:text-foreground",
               active === "docs" ? "text-foreground" : "text-muted-foreground",
@@ -116,7 +117,7 @@ const {
           &copy; {new Date().getFullYear()} Hypatia
         </p>
         <div class="flex items-center gap-4 text-sm">
-          <a href="/docs/getting-started/installation" class="text-muted-foreground transition-colors hover:text-foreground">Docs</a>
+          <a href={sitePath("/docs/getting-started/installation")} class="text-muted-foreground transition-colors hover:text-foreground">Docs</a>
           <a
             href="https://github.com/TQuang122/hypatia"
             target="_blank"

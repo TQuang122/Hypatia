@@ -21,7 +21,7 @@ From the CLI:
 hypatia lit "PICO: adults with type 2 diabetes; intervention continuous glucose monitoring; comparator standard self-monitoring; outcomes HbA1c and hypoglycemia"
 ```
 
-This runs the standard [`/lit` workflow](/docs/workflows/literature-review). For biomedical papers, the `evidence-scout` agent searches PubMed first and Europe PMC for open-access full-text sections.
+This runs the standard [`/lit` workflow](/hypatia/docs/workflows/literature-review). For biomedical papers, the `evidence-scout` agent searches PubMed first and Europe PMC for open-access full-text sections.
 
 ## Frame the question
 

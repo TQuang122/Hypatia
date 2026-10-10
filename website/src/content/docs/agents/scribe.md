@@ -17,7 +17,7 @@ The scribe has file and shell tools only (`read`, `write`, `edit`, `bash`, `grep
 
 ## Citations
 
-The scribe does not add inline citations or a Sources section. The [auditor](/docs/agents/auditor) adds both in a separate pass. Before finishing, the scribe checks that every strong factual statement has an obvious home in the research files.
+The scribe does not add inline citations or a Sources section. The [auditor](/hypatia/docs/agents/auditor) adds both in a separate pass. Before finishing, the scribe checks that every strong factual statement has an obvious home in the research files.
 
 ## Visuals
 

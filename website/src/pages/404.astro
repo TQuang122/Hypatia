@@ -1,5 +1,6 @@
 ---
 import Layout from "@/layouts/main.astro"
+import { sitePath } from "@/lib/site-path"
 ---
 
 <Layout title="404 — Hypatia">
@@ -7,7 +8,7 @@ import Layout from "@/layouts/main.astro"
     <div class="flex flex-col items-center gap-4 text-center">
       <h1 class="font-['VT323'] text-9xl text-primary">404</h1>
       <p class="text-lg text-muted-foreground">Page not found.</p>
-      <a href="/" class="text-sm text-primary hover:underline">Back to home</a>
+      <a href={sitePath("/")} class="text-sm text-primary hover:underline">Back to home</a>
     </div>
   </section>
 </Layout>

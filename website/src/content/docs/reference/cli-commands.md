@@ -5,7 +5,7 @@ section: Reference
 order: 1
 ---
 
-This page covers the Hypatia CLI commands and flags. `hypatia help` prints the same list. Workflow commands like `hypatia deepresearch` map directly to the REPL [slash commands](/docs/reference/slash-commands).
+This page covers the Hypatia CLI commands and flags. `hypatia help` prints the same list. Workflow commands like `hypatia deepresearch` map directly to the REPL [slash commands](/hypatia/docs/reference/slash-commands).
 
 ## Core commands
 
@@ -47,7 +47,7 @@ The `model set` command updates `~/.hypatia/agent/settings.json` with the new de
 | `hypatia alpha code <github-url> [path]` | Inspect a paper repository |
 | `hypatia alpha annotate ...` | Read, write, list, or clear local paper notes |
 
-Use `hypatia alpha ...` rather than a global `alpha` binary so the bundled client runs. See [AlphaXiv](/docs/tools/alphaxiv).
+Use `hypatia alpha ...` rather than a global `alpha` binary so the bundled client runs. See [AlphaXiv](/hypatia/docs/tools/alphaxiv).
 
 ## Package management
 
@@ -57,7 +57,7 @@ Use `hypatia alpha ...` rather than a global `alpha` binary so the bundled clien
 | `hypatia packages install <preset>` | Install an optional package preset |
 | `hypatia update [package]` | Update optional Pi packages you installed, or one of them; core packages update with Hypatia |
 
-See [Package Stack](/docs/reference/package-stack) for the core packages and optional presets.
+See [Package Stack](/hypatia/docs/reference/package-stack) for the core packages and optional presets.
 
 ## Web search
 
@@ -67,7 +67,7 @@ See [Package Stack](/docs/reference/package-stack) for the core packages and opt
 | `hypatia search set <provider> [api-key]` | Set the web search provider (`auto`, `exa`, `perplexity`, or `gemini`) and optionally save its API key |
 | `hypatia search clear` | Reset the web search provider to `auto` while keeping API keys |
 
-See [Web Search](/docs/tools/web-search).
+See [Web Search](/hypatia/docs/tools/web-search).
 
 ## REPL hotkeys
 
@@ -98,7 +98,7 @@ hypatia log
 
 These are equivalent to launching the REPL and typing the corresponding slash command.
 
-For lineage-linked benchmark comparisons, use `/experiments tree ...` inside the REPL. Tree creation requires a clean Git repository root; see the [autoresearch workflow](/docs/workflows/autoresearch#compare-sibling-candidates-with-an-experiment-tree) for shared budgets, isolated node worktrees and promotion behavior.
+For lineage-linked benchmark comparisons, use `/experiments tree ...` inside the REPL. Tree creation requires a clean Git repository root; see the [autoresearch workflow](/hypatia/docs/workflows/autoresearch#compare-sibling-candidates-with-an-experiment-tree) for shared budgets, isolated node worktrees and promotion behavior.
 
 ## Flags
 

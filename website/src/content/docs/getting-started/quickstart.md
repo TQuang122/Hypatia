@@ -5,7 +5,7 @@ section: Getting Started
 order: 2
 ---
 
-This guide assumes you have [installed Hypatia](/docs/getting-started/installation) and run `hypatia setup`.
+This guide assumes you have [installed Hypatia](/hypatia/docs/getting-started/installation) and run `hypatia setup`.
 
 ## Launch the REPL
 
@@ -63,4 +63,4 @@ Type `/help` inside the REPL to see Hypatia's commands. Every research workflow 
 hypatia deepresearch "transformer architectures for protein folding"
 ```
 
-See the [Slash Commands](/docs/reference/slash-commands) and [CLI Commands](/docs/reference/cli-commands) references.
+See the [Slash Commands](/hypatia/docs/reference/slash-commands) and [CLI Commands](/hypatia/docs/reference/cli-commands) references.

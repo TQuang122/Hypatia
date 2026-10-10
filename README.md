@@ -5,7 +5,7 @@
 </p>
 <p align="center">Find answers. Trace every source.</p>
 <p align="center">
-  <a href="https://github.com/TQuang122/hypatia/tree/main/website/src/content/docs"><img alt="Docs" src="https://img.shields.io/badge/docs-github.com/TQuang122/hypatia-0d9668?style=flat-square" /></a>
+  <a href="https://tquang122.github.io/hypatia/"><img alt="Docs" src="https://img.shields.io/badge/docs-github.com/TQuang122/hypatia-0d9668?style=flat-square" /></a>
   <a href="https://github.com/TQuang122/hypatia/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/TQuang122/hypatia?style=flat-square" /></a>
   <a href="https://deepwiki.com/TQuang122/hypatia"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
 </p>
@@ -20,7 +20,7 @@ hypatia setup
 hypatia "what do we know about scaling laws"
 ```
 
-For standalone installers, pinned versions, or skills-only installs, see the [installation guide](website/src/content/docs/getting-started/installation.md). The [setup guide](website/src/content/docs/getting-started/setup.md) covers provider sign-in, local models, and editors.
+For standalone installers, pinned versions, or skills-only installs, see the [installation guide](https://tquang122.github.io/hypatia/docs/getting-started/installation/). The [setup guide](https://tquang122.github.io/hypatia/docs/getting-started/setup/) covers provider sign-in, local models, and editors.
 
 ## Use
 
@@ -59,11 +59,11 @@ Use `/sources` to inspect URLs and DOI/arXiv identifiers in the latest assistant
 
 Use `/autoresearch <idea>` or `/experiments create <goal>` to prepare an approved, bounded benchmark run. Hypatia records observed metrics, code snapshots, logs, and provenance; runs can pause and resume. Experiment trees compare related candidates while keeping their work separate from your checkout.
 
-The [AutoResearch guide](website/src/content/docs/workflows/autoresearch.md) covers benchmark contracts, metric formats, budgets, supported platforms, and experiment trees. See its [independent review gates](website/src/content/docs/workflows/autoresearch.md#independent-review-gates) section for critic and auditor checks.
+The [AutoResearch guide](https://tquang122.github.io/hypatia/docs/workflows/autoresearch/) covers benchmark contracts, metric formats, budgets, supported platforms, and experiment trees. See its [independent review gates](https://tquang122.github.io/hypatia/docs/workflows/autoresearch/#independent-review-gates) section for critic and auditor checks.
 
 ### Idea Forge generation
 
-Use `/idea <research goal>` for a bounded proposal from Hypatia's native Idea Forge. Proposals and citations remain unverified until you check them; benchmark execution requires a separate approval. Read about [Idea Forge generation](website/src/content/docs/workflows/autoresearch.md#idea-forge-generation) for model panels, limits, and saved receipts.
+Use `/idea <research goal>` for a bounded proposal from Hypatia's native Idea Forge. Proposals and citations remain unverified until you check them; benchmark execution requires a separate approval. Read about [Idea Forge generation](https://tquang122.github.io/hypatia/docs/workflows/autoresearch/#idea-forge-generation) for model panels, limits, and saved receipts.
 
 ## Chat TUI
 
@@ -83,7 +83,7 @@ Hypatia opens in fullscreen with the Graphite theme. Use `/settings` to change t
 
 Active subagent model and progress appear in the footer only while agents are running.
 
-Research agents inherit the main model unless you configure routes. Use `/model-routes` in the TUI or `hypatia model routes` in a shell to set a primary model and ordered launch fallbacks; `hypatia model routes --json` prints the effective configuration. See [Subagent model overrides](website/src/content/docs/getting-started/configuration.md#subagent-model-overrides) for JSON settings, precedence, migration, fallback behavior, and usage reporting.
+Research agents inherit the main model unless you configure routes. Use `/model-routes` in the TUI or `hypatia model routes` in a shell to set a primary model and ordered launch fallbacks; `hypatia model routes --json` prints the effective configuration. See [Subagent model overrides](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#subagent-model-overrides) for JSON settings, precedence, migration, fallback behavior, and usage reporting.
 
 ## Evaluation
 
@@ -95,7 +95,7 @@ Hypatia searches alphaXiv, Semantic Scholar, OpenAlex, arXiv, PubMed, Europe PMC
 
 ## Telemetry
 
-Hypatia sends anonymous usage data to PostHog only if you opt in with `HYPATIA_TELEMETRY=1` and your own `HYPATIA_POSTHOG_KEY`: commands, workflows, tools, models, token counts, and errors with their messages and stack traces (your home folder shown as `~`). It never sends prompts, model output, paper content, or tool arguments. Telemetry is off by default. [What is sent](https://github.com/TQuang122/hypatia/blob/main/website/src/content/docs/getting-started/configuration.md#telemetry)
+Hypatia sends anonymous usage data to PostHog only if you opt in with `HYPATIA_TELEMETRY=1` and your own `HYPATIA_POSTHOG_KEY`: commands, workflows, tools, models, token counts, and errors with their messages and stack traces (your home folder shown as `~`). It never sends prompts, model output, paper content, or tool arguments. Telemetry is off by default. [What is sent](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#telemetry)
 
 ## Contributing
 
@@ -108,4 +108,4 @@ npm test
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-[Docs](https://github.com/TQuang122/hypatia/docs) · [Release notes](RELEASES.md) · [MIT License](LICENSE)
+[Docs](https://tquang122.github.io/hypatia/docs/) · [Release notes](RELEASES.md) · [MIT License](LICENSE)

@@ -135,4 +135,4 @@ Check the install:
 hypatia --version
 ```
 
-Then run `hypatia setup` to connect a model provider (see [Setup](/docs/getting-started/setup)). `hypatia doctor` diagnoses configuration, authentication, and runtime problems.
+Then run `hypatia setup` to connect a model provider (see [Setup](/hypatia/docs/getting-started/setup)). `hypatia doctor` diagnoses configuration, authentication, and runtime problems.

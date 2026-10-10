@@ -6,6 +6,10 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 
 ## Unreleased
 
+## v0.1.0 - 2026-10-10
+
+- **Initial public release**: install the open-source research agent from npm or use the standalone macOS, Linux, and Windows bundles. The CLI is built on stock Pi and includes traceable research workflows and provenance artifacts.
+
 - **Transcript search, source browser, and compact chat layout**: long sessions surface Pi's transcript-search shortcut; `/sources` lists citations from the latest answer with explicitly stated verification status and lets you open or copy URLs. Short fullscreen terminals use a compact header and hide welcome art/tips first.
 - **Compact research tool cards**: Code-search results show match counts, the top repository path and snippet; Hugging Face results summarize dataset schema/access, file lists, or file reads. Press `Ctrl+O` to expand the original tool result.
 - **Updated the Pi runtime to 1.1.0**: Pi AI, CLI, and TUI packages now use the matching release, and `pi-btw` is upgraded to a Pi 1.x-compatible version. The MCP SDK is pinned to 1.32.1; the production dependency audit now reports no advisories. Hypatia keeps its fullscreen chat layout through its explicit TUI setting.
@@ -37,13 +41,11 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 - **Compare completed-run provenance in chat**: `/compare-provenance` shows differences in recorded dates, rounds, source coverage, and verification status. It compares sidecar metadata without judging which run is better.
 - **Renamed bundled research agents**: the five roles are now `evidence-scout`, `scribe`, `auditor`, `critic`, and `reviser`. Existing model-route and Pi override keys migrate to the new names. The old `writer`, `verifier`, and `patcher` selectors remain aliases; use the new names for `researcher` and `reviewer`, which Pi reserves for built-in agents. Startup settings normalization is serialized; command-specific model and service-tier writes remain outside this lock. A timeout names the lock file, which can be removed only after confirming no Hypatia startup is active.
 
-## v0.1.0 - 2026-10-03
-
 - **Two-row chat footer**: model, thinking level, context, cumulative token usage, and recorded cost share one row; live activity or idle research shortcuts use the next. Narrow windows shorten labels and preserve leading errors/activity. The header keeps Hypatia, project, and session. Usage includes cache warming, tool usage, and compaction summaries; missing or partial values are marked rather than filled in.
 - **Live research activity and compact search results**: the footer now follows the main agent, parallel tools, blocking input, and subagents with elapsed time. Research shortcuts return after the chat turn actually settles, including across retries and continuations. Paper-search summaries show delivered sources, returned counts, fallback reasons, notes, and errors; `Ctrl+O` expands the full result.
 - **Graphite colors**: the bundled `hypatia` theme and CLI output now use soft white text, pale blue accents, and charcoal panels, with green success, yellow warnings, and red errors. Run `/reload` in an open chat to refresh the bundled theme. Set your terminal background to `#151515` and foreground to `#E6E6E6` for the full palette.
 
-- **Renamed to Hypatia** (`@TQuang122/hypatia`): binary `hypatia`, home `~/.hypatia`, env prefix `HYPATIA_*`.
+- **Renamed to Hypatia** (`@tquang122/hypatia`): binary `hypatia`, home `~/.hypatia`, env prefix `HYPATIA_*`.
 - **Telemetry is off by default.** Nothing is sent unless you opt in with `HYPATIA_TELEMETRY=1` and your own `HYPATIA_POSTHOG_KEY`.
 - **New scholarly sources**: CORE open-access full text (`CORE_API_KEY` unlocks downloads), DOAB open-access books, and OA recovery (`source: oa`) finding a legal open-access copy via Unpaywall, Europe PMC, then CORE.
 - **Resilient paper search** (ported from upstream v0.5.16–v0.5.19): Semantic Scholar ↔ OpenAlex fallback on rate limits, alphaXiv tools fall back to OpenAlex/arXiv, `"null"` optional fields accepted, rejected Semantic Scholar keys named.

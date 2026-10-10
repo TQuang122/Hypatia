@@ -1,0 +1,151 @@
+name: Build native release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from package.json, without the v prefix
+        required: true
+        default: 0.1.0
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Check architecture boundaries
+        run: npm run architecture:check
+      - name: Check Pi RPC compatibility
+        run: node scripts/check-pi-rpc.mjs
+      - name: Audit production dependencies
+        run: node scripts/npm-audit.mjs
+      - name: Validate version and package budget
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          test "$package_version" = "$RELEASE_VERSION"
+          npm pack --dry-run --json > "$RUNNER_TEMP/npm-pack.json"
+          node scripts/verify-package-budget.mjs "$RUNNER_TEMP/npm-pack.json"
+
+  build-native-bundles:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: linux-x64
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+          - runner: macos-14
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: windows-latest
+            target: win32-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify runner architecture
+        env:
+          EXPECTED_TARGET: ${{ matrix.target }}
+        run: |
+          node -e "const actual = process.platform + '-' + process.arch; if (actual !== process.env.EXPECTED_TARGET) { console.error('Expected ' + process.env.EXPECTED_TARGET + ', got ' + actual); process.exit(1); }"
+      - name: Build Hypatia
+        run: npm run build
+      - name: Build native bundle
+        run: npm run build:native-bundle
+      - name: Upload native bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.target }}
+          path: dist/release/*
+          if-no-files-found: error
+
+  create-draft-release:
+    needs: build-native-bundles
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Download native bundles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: dist/release
+          merge-multiple: true
+      - name: Verify assets and create checksum manifest
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          test "$package_version" = "$RELEASE_VERSION"
+          expected=(
+            "hypatia-${RELEASE_VERSION}-linux-x64.tar.gz"
+            "hypatia-${RELEASE_VERSION}-linux-arm64.tar.gz"
+            "hypatia-${RELEASE_VERSION}-darwin-arm64.tar.gz"
+            "hypatia-${RELEASE_VERSION}-darwin-x64.tar.gz"
+            "hypatia-${RELEASE_VERSION}-win32-x64.zip"
+          )
+          for asset in "${expected[@]}"; do
+            test -s "dist/release/$asset"
+          done
+          actual_count="$(find dist/release -maxdepth 1 -type f | wc -l | tr -d ' ')"
+          test "$actual_count" -eq "${#expected[@]}"
+          (cd dist/release && sha256sum "${expected[@]}" > SHA256SUMS && sha256sum -c SHA256SUMS)
+          node scripts/extract-release-notes.mjs "$RELEASE_VERSION" "$RUNNER_TEMP/release-notes.md"
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${RELEASE_VERSION}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to replace it." >&2
+            exit 1
+          fi
+          gh release create "$tag" dist/release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --draft \
+            --title "Hypatia $tag" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"

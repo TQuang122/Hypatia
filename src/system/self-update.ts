@@ -1,4 +1,4 @@
-export const HYPATIA_PACKAGE_NAME = "@TQuang122/hypatia";
+export const HYPATIA_PACKAGE_NAME = "@tquang122/hypatia";
 const REGISTRY_LATEST_URL = `https://registry.npmjs.org/${HYPATIA_PACKAGE_NAME}/latest`;
 
 function parseVersion(version: string): number[] | undefined {

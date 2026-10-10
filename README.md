@@ -15,7 +15,7 @@
 Requires Node.js 22.22 or newer.
 
 ```bash
-npm install -g @TQuang122/hypatia
+npm install -g @tquang122/hypatia
 hypatia setup
 hypatia "what do we know about scaling laws"
 ```

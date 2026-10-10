@@ -10,7 +10,7 @@ test("release discovery requests the personal package registry", async (t) => {
 		return new Response(JSON.stringify({ version: "0.3.48" }));
 	});
 	assert.equal(await fetchLatestHypatiaVersion(), "0.3.48");
-	assert.deepEqual(requests, ["https://registry.npmjs.org/@TQuang122/hypatia/latest"]);
+	assert.deepEqual(requests, ["https://registry.npmjs.org/@tquang122/hypatia/latest"]);
 });
 
 test("isNewerVersion compares release versions numerically", () => {
@@ -31,7 +31,7 @@ test("isNewerVersion rejects non-release version strings", () => {
 test("getHypatiaUpgradeLines points npm installs at npm", () => {
 	const lines = getHypatiaUpgradeLines("0.2.59", "0.2.58", { standaloneBundle: false, platform: "win32" });
 	assert.equal(lines[0], "A newer Hypatia is available: 0.2.59 (installed 0.2.58).");
-	assert.equal(lines[1], "Update the CLI itself with: npm install -g @TQuang122/hypatia");
+	assert.equal(lines[1], "Update the CLI itself with: npm install -g @tquang122/hypatia");
 });
 
 test("getHypatiaUpgradeLines points standalone bundles at the installer", () => {

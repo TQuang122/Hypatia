@@ -274,7 +274,7 @@ test("immutable IDs cannot authorize renamed owners/repos or changed workflow/re
 		immutableAudit({ invocationId: `${immutableRepository}/actions/runs/34014649826/attempts/2` }),
 		immutableAudit({ digest: "0".repeat(128) }),
 		immutableAudit({ certificate: null }),
-		immutableAudit({ name: "@TQuang122/hypatia" }),
+		immutableAudit({ name: "@tquang122/hypatia" }),
 	]) {
 		assert.throws(() => resolveVerifiedNpmSourceCommit(audit, immutableExpected), /hypatia npm provenance/);
 	}
@@ -348,7 +348,7 @@ test("a repository transfer does not authorize old-owner provenance for new rele
 test("a package scope migration does not authorize old-package provenance", () => {
 	const hypatiaExpected = {
 		...expected,
-		name: "@TQuang122/hypatia",
+		name: "@tquang122/hypatia",
 		repository: "https://github.com/TQuang122/hypatia",
 	};
 	for (const oldName of [immutableExpected.name, "@example/retired-agent"]) {

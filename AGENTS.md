@@ -1,6 +1,6 @@
 # Agents
 
-TypeScript ESM CLI (`@TQuang122/hypatia`): research-first agent shell that wraps stock Pi. Entry: `src/index.ts` → `src/cli.ts` → `src/pi/launch.ts` + `src/pi/runtime.ts`. Pi wiring (extensions, prompts, skills, themes, subagents) is declared in the `"pi"` key in `package.json`.
+TypeScript ESM CLI (`@tquang122/hypatia`): research-first agent shell that wraps stock Pi. Entry: `src/index.ts` → `src/cli.ts` → `src/pi/launch.ts` + `src/pi/runtime.ts`. Pi wiring (extensions, prompts, skills, themes, subagents) is declared in the `"pi"` key in `package.json`.
 
 ## Setup
 

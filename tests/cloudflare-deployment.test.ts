@@ -72,7 +72,7 @@ function runStep(name: string, env: Record<string, string | undefined> = {}) {
 		const bin = join(root, "bin");
 		mkdirSync(bin);
 		writeFileSync(join(root, "package.json"), JSON.stringify({
-			name: env.PACKAGE_NAME ?? "@TQuang122/hypatia",
+			name: env.PACKAGE_NAME ?? "@tquang122/hypatia",
 			version: "0.3.48",
 		}));
 		writeFileSync(join(bin, "npm"), `#!/bin/bash
@@ -354,7 +354,7 @@ test("npm gate requires the exact personal manifest version and fails closed", d
 	const name = "Require the published npm release";
 	const result = runStep(name);
 	assert.equal(result.status, 0);
-	assert.equal(result.args, "view\n@TQuang122/hypatia@0.3.48\nversion\n--registry=https://registry.npmjs.org\n");
+	assert.equal(result.args, "view\n@tquang122/hypatia@0.3.48\nversion\n--registry=https://registry.npmjs.org\n");
 	for (const env of [
 		{ MOCK_PUBLISHED: "" }, { MOCK_PUBLISHED: "0.3.47" },
 		{ MOCK_PUBLISHED: "0.3.48", MOCK_EXIT: "1" },

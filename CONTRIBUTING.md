@@ -81,53 +81,14 @@ npm run build
 
 ### Release and versioning discipline
 
-- The curl installer and release docs point users at tagged releases, not arbitrary commits on `main`.
-- If you ship user-visible fixes after a tag, do not leave the repo in a state where `main` and the latest release advertise the same version string while containing different behavior.
-- When changing release-sensitive behavior, check the version story across:
-  - `.nvmrc`
-  - `package.json`
-  - `website/package.json`
-  - `scripts/check-node-version.mjs`
-  - install docs in `README.md` and `website/src/content/docs/getting-started/installation.md`
+- Use the lowercase public npm package name `@tquang122/hypatia` consistently in `package.json`, `package-lock.json`, self-update code, and install documentation. npm does not allow uppercase letters in new package names.
+- A release version must match `package.json` and a `## vX.Y.Z` section in `RELEASES.md`. Run the full repository checks, production dependency audit, npm pack budget, and native bundle validation before publishing.
+- `.github/workflows/release-assets.yml` is manually dispatched from `main`. It builds and validates bundles for macOS, Linux, and Windows, then creates a **draft** GitHub Release with a `SHA256SUMS` manifest. Publish the npm package first; publish the draft release only after the npm install path is verified, so the `latest` installers never point at an unpublished package.
+- Publishing to npm requires an authorized maintainer session. Do not commit or expose npm tokens; configure npm trusted publishing for future automated releases when available.
 
 ### Website deployment
 
-The existing static `website/` build serves research docs and installers. Cloudflare
-Pages project `hypatia` (`hypatia-bpr.pages.dev`) uses
-`website/wrangler.jsonc` and uploads `website/dist`; building also synchronizes the
-canonical installer scripts into the site.
-
-`.github/workflows/deploy-website.yml` deploys only after a successful **Publish and
-Release** run triggered by a `main` push in `TQuang122/hypatia`, or a manual
-**Deploy website** dispatch on `main`. Forks, pull requests, unsuccessful releases,
-and non-main manual runs are excluded. Both automatic and manual runs validate
-their initiating SHA, then **reconcile current `main`**, not that initiating SHA.
-Before checkout, the GitHub API must prove a completed, successful, same-repository
-`main` push run of the existing `.github/workflows/publish.yml` at exactly current
-main's SHA. The workflow has `contents: read` and `actions: read`; the automatic
-`GITHUB_TOKEN` is exposed as `GH_TOKEN` only to this pre-checkout lookup.
-API errors fail closed; an unqualified main skips every remaining step. Manual
-dispatch does not bypass publisher success.
-
-The qualified SHA is checked out exactly, its root manifest's
-`@TQuang122/hypatia` version must exist on the public npm registry, and website
-`npm ci`, lint, typecheck, and build must pass. Production runs remain serialized
-without interrupting active uploads. GitHub can replace a pending run with a
-delayed older event; that surviving run now reconciles qualified current main,
-so it can deploy the newer release whose pending invocation was canceled. A final
-live-main check still skips the upload if main changed after source selection.
-There is no fallback to an older release when current main is unqualified; wait
-for its successful publisher event or dispatch again after that proof exists.
-
-Hosting and canonical secrets remain in the existing **Companion** organization:
-Infisical project **hypatia**, environment **prod**, mirrored to GitHub repository
-secrets. GitHub uses `TQuang122/hypatia` and npm publishes `@TQuang122/hypatia`. The existing
-`CLOUDFLARE_API_TOKEN` secret is passed only to the upload step, after Wrangler
-`4.107.0` is installed; no new credential is required. Cloudflare account ID
-`2164ee7d134223511b4621d9b163a5ac` is a nonsecret workflow constant.
-
-This configuration does not publish npm, change DNS, or establish a `github.com/TQuang122/hypatia`
-domain cutover. Maintainers handle release completion and domain routing separately.
+The static Astro site is published at `https://tquang122.github.io/hypatia/`. `website/astro.config.mjs` sets the GitHub Pages `site` and repository `base`; internal links and assets must use the base path. `.github/workflows/deploy-pages.yml` builds and deploys the site on pushes to `main`. GitHub Pages must remain configured to use GitHub Actions as its source.
 
 ## AI-Assisted Contributions
 

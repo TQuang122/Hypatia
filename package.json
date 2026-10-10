@@ -1,5 +1,5 @@
 {
-  "name": "@TQuang122/hypatia",
+  "name": "@tquang122/hypatia",
   "version": "0.1.0",
   "description": "Research-first CLI agent built on Pi and alphaXiv",
   "license": "MIT",
@@ -109,7 +109,7 @@
     "type": "git",
     "url": "git+https://github.com/TQuang122/hypatia.git"
   },
-  "homepage": "https://github.com/TQuang122/hypatia#readme",
+  "homepage": "https://tquang122.github.io/hypatia/",
   "bugs": {
     "url": "https://github.com/TQuang122/hypatia/issues"
   },

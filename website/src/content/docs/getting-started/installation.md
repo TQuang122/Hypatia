@@ -34,7 +34,7 @@ Hypatia runs shell commands with Bash, so on Windows also install [Git for Windo
 To install into an existing Node.js environment instead:
 
 ```bash
-npm install -g @TQuang122/hypatia
+npm install -g @tquang122/hypatia
 ```
 
 This uses your local Node.js, which must satisfy `>=22.22.0`. npm installs Hypatia's Pi runtime as a peer dependency, so if your npm config sets `legacy-peer-deps`, add `--legacy-peer-deps=false`.
@@ -44,7 +44,7 @@ This uses your local Node.js, which must satisfy `>=22.22.0`. npm installs Hypat
 Rerun the installer you originally used to get the latest tagged release. For npm installs:
 
 ```bash
-npm install -g @TQuang122/hypatia@latest
+npm install -g @tquang122/hypatia@latest
 ```
 
 `hypatia update` only updates optional Pi packages you installed with `hypatia packages install`. The core packages update with Hypatia itself.
@@ -97,7 +97,7 @@ Then remove `%LOCALAPPDATA%\Programs\hypatia\bin` from your user `PATH`.
 For npm installs:
 
 ```bash
-npm uninstall -g @TQuang122/hypatia
+npm uninstall -g @tquang122/hypatia
 ```
 
 ## Skills only

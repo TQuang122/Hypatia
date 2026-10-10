@@ -77,7 +77,7 @@ Update one package, by preset name or Pi package source:
 hypatia update memory
 ```
 
-Core packages are not touched by `hypatia update` because they ship with Hypatia; to update them, upgrade Hypatia itself (rerun the installer from the [Installation guide](/hypatia/docs/getting-started/installation), or `npm install -g @TQuang122/hypatia@latest`).
+Core packages are not touched by `hypatia update` because they ship with Hypatia; to update them, upgrade Hypatia itself (rerun the installer from the [Installation guide](/hypatia/docs/getting-started/installation), or `npm install -g @tquang122/hypatia@latest`).
 
 ## Runtime versions
 

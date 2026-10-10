@@ -47,7 +47,7 @@ try {
   import.meta.resolve("@earendil-works/pi-ai");
 } catch {
   console.error("hypatia could not find its Pi runtime (@earendil-works/pi-coding-agent), which npm skips when legacy-peer-deps is on.");
-  console.error("Reinstall with: npm install -g @TQuang122/hypatia --legacy-peer-deps=false");
+  console.error("Reinstall with: npm install -g @tquang122/hypatia --legacy-peer-deps=false");
   process.exit(1);
 }
 

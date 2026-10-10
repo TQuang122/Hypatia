@@ -229,7 +229,7 @@ test("resolvePackageRoot follows Node lookup for hoisted installs", () => {
 	const hoisted = join(root, "node_modules", "pi-web-access");
 	mkdirSync(appRoot, { recursive: true });
 	mkdirSync(hoisted, { recursive: true });
-	writeFileSync(join(appRoot, "package.json"), JSON.stringify({ name: "@TQuang122/hypatia" }));
+	writeFileSync(join(appRoot, "package.json"), JSON.stringify({ name: "@tquang122/hypatia" }));
 	writeFileSync(join(hoisted, "package.json"), JSON.stringify({ name: "pi-web-access" }));
 
 	assert.equal(resolvePackageRoot(appRoot, "pi-web-access"), hoisted);
@@ -243,7 +243,7 @@ test("resolveBundledAlphaCliPath resolves hoisted package installs before bundle
 	const hoistedAlpha = join(root, "node_modules", "@companion-ai", "alpha-hub", "bin", "alpha");
 
 	mkdirSync(join(appRoot), { recursive: true });
-	writeFileSync(join(appRoot, "package.json"), JSON.stringify({ name: "@TQuang122/hypatia" }));
+	writeFileSync(join(appRoot, "package.json"), JSON.stringify({ name: "@tquang122/hypatia" }));
 	mkdirSync(dirname(hoistedAlpha), { recursive: true });
 	mkdirSync(join(root, "node_modules", "@companion-ai", "alpha-hub", "src"), { recursive: true });
 	writeFileSync(

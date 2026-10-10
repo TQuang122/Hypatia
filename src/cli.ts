@@ -717,7 +717,7 @@ async function runMain(input: { here: string; appRoot: string; hypatiaVersion: s
 		throw new Error("--json is only supported with `hypatia model routes`.");
 	}
 	if (command && REMOVED_COMMANDS.has(command)) {
-		console.error(`\`hypatia ${command}\` was removed after 0.3.49. Install @TQuang122/hypatia@0.3.49 to keep it.`);
+		console.error(`\`hypatia ${command}\` was removed after 0.3.49. Install @tquang122/hypatia@0.3.49 to keep it.`);
 		process.exitCode = 1;
 		return;
 	}

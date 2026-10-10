@@ -3,11 +3,11 @@
     <img src="assets/hypatia-readme-banner-console.png" alt="Hypatia — open source AI research, made traceable" width="800" />
   </a>
 </p>
-<p align="center">Find answers. Trace every source.</p>
+<p align="center"><strong>Research-First Agent Shell for Scientific Rigor.</strong></p>
 <p align="center">
-  <a href="https://tquang122.github.io/hypatia/"><img alt="Docs" src="https://img.shields.io/badge/docs-github.com/TQuang122/hypatia-0d9668?style=flat-square" /></a>
-  <a href="https://github.com/TQuang122/hypatia/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/TQuang122/hypatia?style=flat-square" /></a>
-  <a href="https://deepwiki.com/TQuang122/hypatia"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
+  <a href="https://tquang122.github.io/hypatia/"><img alt="Documentation" src="https://img.shields.io/badge/docs-read%20the%20docs-0d9668?style=for-the-badge&logo=readthedocs&logoColor=white" /></a>&nbsp;
+  <a href="https://github.com/TQuang122/hypatia/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-4b5563?style=for-the-badge" /></a>&nbsp;
+  <a href="https://deepwiki.com/TQuang122/hypatia"><img alt="Ask DeepWiki" src="https://img.shields.io/badge/Ask-DeepWiki-2563eb?style=for-the-badge" /></a>
 </p>
 
 ## Quick start

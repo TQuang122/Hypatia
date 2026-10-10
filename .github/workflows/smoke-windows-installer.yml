@@ -1,0 +1,49 @@
+name: Smoke published Windows installer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-windows-installer
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install from the public latest release
+        shell: pwsh
+        run: |
+          irm https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.ps1 | iex
+
+          $installRoot = Join-Path $env:LOCALAPPDATA "Programs\hypatia"
+          $bundle = Join-Path $installRoot "hypatia-0.1.0-win32-x64"
+          $launcher = Join-Path $installRoot "bin\hypatia.cmd"
+          if (-not (Test-Path -LiteralPath $launcher)) {
+            throw "Windows installer did not create $launcher"
+          }
+
+          $version = @(& $launcher --version 2>&1)
+          if ($LASTEXITCODE -ne 0 -or $version[-1].Trim() -ne "0.1.0") {
+            throw "Installed launcher returned an unexpected version: $($version -join [Environment]::NewLine)"
+          }
+
+          $help = @(& $launcher --help 2>&1)
+          if ($LASTEXITCODE -ne 0 -or $help.Count -eq 0) {
+            throw "Installed launcher failed --help: $($help -join [Environment]::NewLine)"
+          }
+
+          $node = Join-Path $bundle "node\node.exe"
+          $rpcCheck = Join-Path $bundle "app\scripts\check-pi-rpc.mjs"
+          $entry = Join-Path $bundle "app\bin\hypatia.js"
+          & $node $rpcCheck $entry
+          if ($LASTEXITCODE -ne 0) {
+            throw "Installed Windows bundle failed the Pi RPC check."
+          }

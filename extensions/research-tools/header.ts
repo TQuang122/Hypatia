@@ -62,20 +62,24 @@ export function installHypatiaHeader(
 				.filter(Boolean)
 				.join(" · ");
 			const right = [title, middle, bottom].map((line) => singleLine(line));
+			if (tui?.mode === "fullscreen" && tui.terminal.rows < 28) {
+				const compact = `${activeTheme.fg("accent", activeTheme.bold("Hypatia"))}${activeTheme.fg("dim", ` ${HYPATIA_VERSION}`)}  ${activeTheme.fg("text", fit(middle, Math.max(1, maxWidth - 20)))}`;
+				return [fit(compact, maxWidth), fit(bottom, maxWidth), ""];
+			}
 
 			// Narrow screens fall back to stacked text without the mark.
 			if (maxWidth < 60) {
-				return right.map((line) => fit(line, maxWidth));
+				return [...right.map((line) => fit(line, maxWidth)), ""];
 			}
 			const gap = "  ";
 			const rightWidth = maxWidth - MARK[0]!.length - gap.length;
-			return MARK.map((mark, index) => {
+			return [...MARK.map((mark, index) => {
 				const text = fit(right[index] ?? "", rightWidth);
 				const colored = index === 0
 					? `${activeTheme.fg("accent", activeTheme.bold("Hypatia"))}${activeTheme.fg("dim", text.slice("Hypatia".length))}`
 					: activeTheme.fg(index === 1 ? "text" : "dim", text);
 				return `${paintMark(activeTheme, mark)}${gap}${colored}`;
-			});
+			}), ""];
 		},
 		invalidate() {},
 	});

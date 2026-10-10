@@ -48,7 +48,8 @@ test("Hypatia header keeps its mark, project, and session without repeating foot
 	};
 	for (const width of [121, 80, 50]) {
 		const lines = headerFactory(undefined, theme).render(width);
-		assert.equal(lines.length, 3);
+		assert.equal(lines.length, 4);
+		assert.equal(lines[3], "");
 		for (const line of lines) {
 			assert.ok(
 				visibleWidth(line) <= width,
@@ -94,4 +95,23 @@ test("Hypatia header only uses universal theme colors", async (t) => {
 	for (const width of [121, 80, 50]) {
 		headerFactory(undefined, strictTheme).render(width);
 	}
+});
+
+test("fullscreen header uses two compact content lines on short terminals", async (t) => {
+	const cwd = mkdtempSync(join(tmpdir(), "hypatia-header-short-"));
+	t.after(() => rmSync(cwd, { recursive: true, force: true }));
+	let headerFactory: HeaderFactory | undefined;
+	const ctx = {
+		hasUI: true, mode: "tui", cwd,
+		sessionManager: { getBranch: () => [], getSessionName: () => "short-session", getSessionId: () => "s" },
+		ui: { setHeader: (factory: HeaderFactory) => { headerFactory = factory; } },
+	};
+	await installHypatiaHeader(ctx as any);
+	assert.ok(headerFactory);
+	const tui = { mode: "fullscreen", terminal: { rows: 22 } };
+	const lines = headerFactory(tui, { fg: (_color, text) => text, bold: (text) => text }).render(80);
+	assert.equal(lines.length, 3);
+	assert.match(lines[0]!, /Hypatia/);
+	assert.match(lines[0]!, /hypatia-header-short-/);
+	assert.match(lines[1]!, /short-session/);
 });

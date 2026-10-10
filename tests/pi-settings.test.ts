@@ -55,6 +55,7 @@ test("first run writes the bundled defaults and loads Hypatia plus its bundled P
 
 	const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
 	const bundled = JSON.parse(readFileSync(bundledSettingsPath, "utf8"));
+	assert.equal(settings.theme, "hypatia");
 	for (const [key, value] of Object.entries(bundled)) assert.deepEqual(settings[key], value);
 	assert.equal(settings.defaultThinkingLevel, "high");
 	assert.deepEqual(settings.packages, getHypatiaPackageSources(appRoot));
@@ -274,9 +275,11 @@ test("startup waits for the active agent-name migration before reading settings"
 	const watcher = watch(join(root, "agent"), { encoding: "utf8", persistent: false });
 	t.after(() => watcher.close());
 	const markerChanged = new Promise<void>((resolveMarker) => {
-		watcher.on("change", (_eventType, filename) => {
+		const resolveIfMarker = (_eventType: string, filename: string | Buffer | null) => {
 			if (filename?.toString() === markerName) resolveMarker();
-		});
+		};
+		watcher.on("change", resolveIfMarker);
+		watcher.on("rename", resolveIfMarker);
 	});
 	const startup = ensureHypatiaSettings(settingsPath, bundledSettingsPath, appRoot, "medium", authPath);
 	const settledBeforeMigration = await Promise.race([

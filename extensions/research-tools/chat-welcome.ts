@@ -97,6 +97,7 @@ class WelcomeLogo implements Component {
 	render(width: number): string[] {
 		if (width < 12) return [];
 		const fullscreen = this.tui.mode === "fullscreen";
+		if (fullscreen && this.tui.terminal.rows < 24) return [];
 		const maxHeight = fullscreen ? Math.max(1, Math.min(24, this.tui.terminal.rows - 24)) : 14;
 		const cells = getCellDimensions();
 		const imageAspect = LOGO_DIMENSIONS.widthPx / LOGO_DIMENSIONS.heightPx;

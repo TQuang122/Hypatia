@@ -40,6 +40,7 @@ export const extensionCommandSpecs = [
 	{ name: "help", args: "", section: "Project & Session", description: "Show grouped Hypatia commands and prefill the editor with a selected command.", publicDocs: true },
 	{ name: "init", args: "", section: "Project & Session", description: "Bootstrap AGENTS.md and session-log folders for a research project.", publicDocs: true },
 	{ name: "outputs", args: "", section: "Project & Session", description: "View grouped research reports and provenance in the TUI, search their text, or copy artifact paths.", publicDocs: true },
+	{ name: "sources", args: "", section: "Project & Session", description: "Browse citations from the latest assistant answer; open or copy a source URL.", publicDocs: true },
 	{ name: "compare-provenance", args: "", section: "Project & Session", description: "Compare verification and source-coverage metadata from two completed research runs.", publicDocs: true },
 	{ name: "model-routes", args: "", section: "Agents & Delegation", description: "Configure ordered routes for evidence-scout, scribe, auditor, critic, and reviser; choose Pi-override or parent-model inheritance.", publicDocs: true },
 	{ name: "service-tier", args: "", section: "Project & Session", description: "View or set the provider service tier override for supported models.", publicDocs: true },

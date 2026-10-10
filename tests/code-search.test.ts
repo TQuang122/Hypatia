@@ -78,6 +78,7 @@ test("code search tool registers with query guidance", async () => {
 	const tool = tools.get("hypatia_code_search")!;
 	assert.match(tool.description, /grep\.app/);
 	assert.match(tool.promptGuidelines.join("\n"), /paper-code audits/);
+	assert.equal(typeof (tool as unknown as { renderResult?: unknown }).renderResult, "function");
 });
 
 test("context7 MCP registers only when explicitly enabled", () => {

@@ -34,6 +34,7 @@ Workflow prompts can call the bundled agents (evidence-scout, scribe, auditor, c
 | `/idea <research goal>` | Generate bounded research ideas in chat with native Idea Forge |
 | `/experiments` | Native idea creation, experiment setup, review gates, receipts, pause/resume, trees and provenance |
 | `/outputs` | View grouped reports/provenance in the TUI, search text, or copy artifact paths |
+| `/sources` | Browse citations in the latest assistant answer; inspect identifiers and explicitly stated verification status, then open or copy a URL |
 | `/compare-provenance` | Compare recorded source coverage and verification metadata from two completed research runs |
 | `/model-routes` | Configure ordered subagent models and choose Pi-override or parent-model inheritance |
 | `/tools` | Browse public research tools with their source and parameter summary |

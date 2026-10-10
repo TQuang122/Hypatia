@@ -1,7 +1,12 @@
+import { stripVTControlCharacters } from "node:util";
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { AgentToolResult, Theme, ToolDefinition, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
 import { createRequestPacer } from "./request-pacer.js";
+import { formatToolDuration, ToolSummary, type ToolSummaryRow } from "./render-utils.js";
 
 type CodeSearchParams = {
 	limit?: number;
@@ -14,6 +19,7 @@ const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 20;
 const REQUEST_TIMEOUT_MS = 25_000;
 const SNIPPET_CHARS = 600;
+type ToolRenderContext = Parameters<NonNullable<ToolDefinition["renderResult"]>>[3];
 
 // grep.app is a small free service with no documented quota; pace politely
 // because Pi runs parallel tool calls in one process.
@@ -71,6 +77,55 @@ function stripMarkup(snippet: string): string {
 function truncateText(value: string | undefined, maxChars: number): string | undefined {
 	if (!value || value.length <= maxChars) return value;
 	return `${value.slice(0, maxChars).trimEnd()}…`;
+}
+
+function displayText(value: unknown, maxWidth = 180): string {
+	if (typeof value !== "string") return "";
+	const clean = stripVTControlCharacters(value).replace(/[\x00-\x1f\x7f-\x9f]/g, " ").replace(/\s+/g, " ").trim();
+	return clean.length > maxWidth ? `${clean.slice(0, maxWidth - 1).trimEnd()}…` : clean;
+}
+
+function textResult(result: AgentToolResult<unknown>): string {
+	return result.content.filter((item) => item.type === "text").map((item) => item.text).join("\n");
+}
+
+export function createCodeSearchRenderers() {
+	return {
+		renderShell: "default" as const,
+		renderCall(args: Record<string, unknown>, theme: Theme): Text {
+			const query = displayText(args.query, 120);
+			return new Text(`${theme.fg("toolTitle", theme.bold("Code search"))}${query ? theme.fg("muted", ` · ${query}`) : ""}`, 0, 0);
+		},
+		renderResult(result: AgentToolResult<unknown>, options: ToolRenderResultOptions, theme: Theme, context: ToolRenderContext) {
+			if (options.expanded) return new Text(theme.fg(context.isError ? "error" : "toolOutput", textResult(result)), 0, 0);
+			const details = recordValue(result.details);
+			const results = arrayValue(details.results).map(recordValue);
+			const returned = Math.max(0, Math.floor(numberValue(details.returned) ?? results.length));
+			const total = Math.max(0, Math.floor(numberValue(details.totalCount) ?? returned));
+			const duration = formatToolDuration(context.durationMs);
+			const durationSuffix = duration ? ` · ${duration}` : "";
+			if (context.isError) {
+				const error = displayText(textResult(result).split(/\r?\n/u).find((line) => line.trim()));
+				return new ToolSummary([
+					{ color: "error", text: `Error · Code search${durationSuffix}` },
+					...(error ? [{ color: "error" as const, text: error }] : []),
+					{ color: "dim", text: "Ctrl+O for full error details" },
+				], theme);
+			}
+			const first = results[0];
+			const repo = displayText(first?.repo);
+			const path = displayText(first?.path, 150);
+			const snippet = displayText(first?.snippet, 160);
+			const rows: ToolSummaryRow[] = [{
+				color: total > 0 ? "success" as const : "warning" as const,
+				text: `${total === 0 ? "No matches" : `Code search · ${total} matches`}${returned !== total ? ` · ${returned} shown` : ""}${durationSuffix}`,
+			}];
+			if (repo || path) rows.push({ color: "text", text: `${repo}${repo && path ? " · " : ""}${path}` });
+			if (snippet) rows.push({ color: "muted", text: snippet });
+			rows.push({ color: "dim", text: returned > 0 ? "Ctrl+O for all snippets and file links" : "Ctrl+O for full search details" });
+			return new ToolSummary(rows, theme);
+		},
+	};
 }
 
 async function fetchJson(url: URL): Promise<unknown> {
@@ -156,6 +211,7 @@ export function registerCodeSearchTool(pi: ExtensionAPI): void {
 			"Use hypatia_code_search for paper-code audits and replication: find the implementation a paper describes, check how an API is actually used, or locate prior art. Narrow broad queries with lang:, path:, or repo: filters.",
 			"Snippets are retrieval evidence; read the full file before claiming what the code does.",
 		],
+		...createCodeSearchRenderers(),
 		parameters: Type.Object({
 			query: Type.String({
 				description: "Code search query in grep.app syntax. Examples: httpx Client, lang:python dataclass, path:src/ transformer, repo:pytorch/pytorch autograd.",

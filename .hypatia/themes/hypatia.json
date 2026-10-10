@@ -74,13 +74,13 @@
     "syntaxOperator": "ink",
     "syntaxPunctuation": "stone",
 
-    "thinkingOff": "edge",
-    "thinkingMinimal": "ash",
-    "thinkingLow": "ochre",
-    "thinkingMedium": "coral",
-    "thinkingHigh": "rose",
-    "thinkingXhigh": "amber",
-    "thinkingMax": "amber",
+    "thinkingOff": "#6c767b",
+    "thinkingMinimal": "#68808d",
+    "thinkingLow": "#5489a4",
+    "thinkingMedium": "#6185cc",
+    "thinkingHigh": "#9776e5",
+    "thinkingXhigh": "#de54c1",
+    "thinkingMax": "#fe5462",
 
     "bashMode": "amber"
   },

@@ -22,6 +22,7 @@ export function registerChatTips(pi: ExtensionAPI): ChatTips {
 	let busy = true, checkingReports = false, workSinceIdle = false;
 	let reportChanged = false, hasToolResult = false, widgetVisible = false, welcomeVisible = false;
 	let generation = 0, scanSequence = 0;
+	let longSession = false;
 	let snapshot: ReportSnapshot | undefined;
 	let stopInput: (() => void) | undefined;
 
@@ -30,6 +31,10 @@ export function registerChatTips(pi: ExtensionAPI): ChatTips {
 		&& current.ui.getEditorText().length === 0);
 	const tipText = (): string => {
 		if (reportChanged) return "Use /outputs to read your report.";
+		if (longSession) {
+			const search = keyName("tui.altScreen.search");
+			if (search) return `Press ${search} to find a paper or conclusion in this transcript.`;
+		}
 		const expand = keyName("app.tools.expand");
 		if (hasToolResult && expand) return `Press ${expand} to expand tool details.`;
 		const newline = keyName("tui.input.newLine");
@@ -45,7 +50,7 @@ export function registerChatTips(pi: ExtensionAPI): ChatTips {
 			invalidate() {},
 			render(width: number): string[] {
 				// Also guard programmatic changes in editors installed by other extensions.
-				if (width <= 0 || !shouldShow()) return [];
+				if (width <= 0 || !shouldShow() || (_tui.mode === "fullscreen" && _tui.terminal.rows < 26)) return [];
 				const theme = current?.ui.theme ?? initialTheme;
 				const padding = pi.getSettings().outputPad === 0 || width < 3 ? 0 : 1;
 				return new Text(`${theme.fg("accent", "Tip")} ${theme.fg("dim", "·")} ${theme.fg("muted", tipText())}`, padding, 0).render(width);
@@ -95,6 +100,8 @@ export function registerChatTips(pi: ExtensionAPI): ChatTips {
 		stopInput?.(); stopInput = undefined;
 		++generation; ++scanSequence;
 		current = ctx;
+		longSession = ctx.sessionManager.getBranch().filter((entry) => entry.type === "message"
+			&& (entry.message.role === "user" || entry.message.role === "assistant")).length >= 12;
 		welcomeVisible = false;
 		busy = !ctx.isIdle(); checkingReports = false; workSinceIdle = false;
 		reportChanged = false; hasToolResult = false; widgetVisible = false; snapshot = undefined;
@@ -113,6 +120,12 @@ export function registerChatTips(pi: ExtensionAPI): ChatTips {
 		reportChanged = false; hasToolResult = false; workSinceIdle = true;
 		busy = true; ++scanSequence; checkingReports = false;
 		refresh();
+	});
+	pi.on("message_start", (event) => {
+		if (event.message.role === "user" && current) {
+			longSession ||= current.sessionManager.getBranch().filter((entry) => entry.type === "message"
+				&& (entry.message.role === "user" || entry.message.role === "assistant")).length >= 10;
+		}
 	});
 	pi.on("tool_execution_end", (event) => {
 		if (current?.mode === "tui" && current.hasUI && !event.parentToolCallId && !event.isError) hasToolResult = true;

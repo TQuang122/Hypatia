@@ -61,6 +61,9 @@ test("Hugging Face tools register read-only dataset, tree, and file readers", as
 	assert.equal(tools.has("hf_dataset_info"), true);
 	assert.equal(tools.has("hf_repo_files"), true);
 	assert.equal(tools.has("hf_repo_read_file"), true);
+	for (const name of ["hf_dataset_info", "hf_repo_files", "hf_repo_read_file"]) {
+		assert.equal(typeof (tools.get(name) as unknown as { renderResult?: unknown }).renderResult, "function");
+	}
 	assert.equal(details.id, "org/test-dataset");
 	assert.deepEqual(details.datasetInfo, { features: { text: { dtype: "string" } }, splits: [{ name: "train" }] });
 	assert.equal(details.url, "https://huggingface.co/datasets/org/test-dataset");

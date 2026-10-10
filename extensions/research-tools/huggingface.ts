@@ -1,6 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
+import { createHuggingFaceRenderers } from "./huggingface-renderer.js";
+
 type RepoType = "model" | "dataset" | "space";
 
 const HF_API_BASE = "https://huggingface.co/api";
@@ -188,6 +190,7 @@ export function registerHuggingFaceTools(pi: ExtensionAPI): void {
 			"Use hf_dataset_info before calling a Hugging Face dataset usable in an ML recipe or replication plan.",
 			"Treat hf_dataset_info feature and split details as evidence; if they are missing, mark schema or availability as unverified.",
 		],
+		...createHuggingFaceRenderers("dataset-info"),
 		parameters: Type.Object({
 			dataset: Type.String({ description: "Dataset repo id, for example HuggingFaceH4/ultrachat_200k." }),
 		}),
@@ -206,6 +209,7 @@ export function registerHuggingFaceTools(pi: ExtensionAPI): void {
 		promptGuidelines: [
 			"Use hf_repo_files before hf_repo_read_file so large model weights, archives, and dataset shards can be avoided.",
 		],
+		...createHuggingFaceRenderers("repo-files"),
 		parameters: Type.Object({
 			repo: Type.String({ description: "Hub repo id, for example HuggingFaceH4/ultrachat_200k or openai-community/gpt2." }),
 			repoType: repoTypeSchema,
@@ -236,6 +240,7 @@ export function registerHuggingFaceTools(pi: ExtensionAPI): void {
 		promptGuidelines: [
 			"Use hf_repo_read_file only for small text files from Hugging Face repos; do not use it for weights, archives, or dataset shards.",
 		],
+		...createHuggingFaceRenderers("read-file"),
 		parameters: Type.Object({
 			repo: Type.String({ description: "Hub repo id, for example HuggingFaceH4/ultrachat_200k or openai-community/gpt2." }),
 			repoType: repoTypeSchema,

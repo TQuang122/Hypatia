@@ -7,6 +7,7 @@ import { registerCurrentDateResearchContext } from "./research-tools/current-dat
 import { registerDiscoveryCommands } from "./research-tools/discovery.js";
 import { registerBudgetGuard } from "./research-tools/budget-guard.js";
 import { registerChatPresentation } from "./research-tools/chat-presentation.js";
+import { registerCitationSourcesCommand } from "./research-tools/citation-sources.js";
 import { registerChatTurnOutput, registerTuiModeNotices } from "./research-tools/chat-turn-output.js";
 import { registerCodeSearchTool } from "./research-tools/code-search.js";
 import { registerContext7Mcp } from "./research-tools/context7-mcp.js";
@@ -64,6 +65,7 @@ export default function researchTools(pi: ExtensionAPI): void {
 	registerHelpCommand(pi);
 	registerInitCommand(pi);
 	registerOutputsCommand(pi);
+	registerCitationSourcesCommand(pi);
 	registerServiceTierControls(pi);
 	registerScienceDatabaseTools(pi);
 	registerResearchTelemetry(pi);

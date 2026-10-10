@@ -29,6 +29,8 @@ The lead agent and the evidence-scout can call these tools:
 | `hf_repo_files` | List files in a model, dataset, or Space repository (default 200 entries, max 1000) before reading anything large |
 | `hf_repo_read_file` | Read small text files from Hub repos, such as `README.md`, configs, examples, and scripts |
 
+In the chat TUI, these tools render compact cards with dataset access/schema, file counts and paths, or the path and size of a read file. Press `Ctrl+O` to expand the original result.
+
 `hf_repo_files` and `hf_repo_read_file` default to dataset repos; pass `repoType: "model"` or `"space"` for others. The file reader returns 20,000 characters by default (max 60,000) and is intended for text files only. It is not a weight downloader or dataset bulk reader. It refuses model weight files, archives, and dataset shards such as `.safetensors`, `.bin`, `.gguf`, `.parquet`, `.zip`, and `.tar` before download.
 
 ## Where it is used

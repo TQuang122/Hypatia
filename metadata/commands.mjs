@@ -37,14 +37,14 @@ export function readPromptSpecs(appRoot) {
 export const extensionCommandSpecs = [
 	{ name: "idea", args: "[research goal]", section: "Project & Session", description: "Choose a one-model or three-model panel above the input; approving the readable, budget-checked contract starts Idea Forge. Defaults: 12 calls, 900s, 5000 tokens/request, 90s/request. Use research-ideation for broad chat-only brainstorming.", publicDocs: true },
 	{ name: "experiments", args: "[tree create|list|status <slug>|approve <tree> <node>|fork <tree> <parent> <child> <hypothesis>|promote <tree> <node>|pause|resume|recover|close-node <tree> <node>|close|export <tree>|acknowledge <tree> <node>|generate <goal>|ideas|forge-status|forge-pause|forge-resume|forge-recover|forge-approve <slug>|status|pause|resume|approve|export|close|recover|review <slug>|create <goal>|create-json <contract-file>|import <idea-file>|import-json <idea-file> --contract <contract-file>]", section: "Project & Session", description: "Prepare experiments or native research ideas in chat with /idea, then approve a frozen contract; manage receipts, shared-budget Git worktree trees and recovery.", publicDocs: true },
-	{ name: "help", args: "", section: "Project & Session", description: "Show grouped Hypatia commands and prefill the editor with a selected command.", publicDocs: true },
+	{ name: "help", args: "", section: "Project & Session", description: "Search grouped Hypatia commands and prefill the composer without sending.", publicDocs: true },
 	{ name: "init", args: "", section: "Project & Session", description: "Bootstrap AGENTS.md and session-log folders for a research project.", publicDocs: true },
 	{ name: "outputs", args: "", section: "Project & Session", description: "View grouped research reports and provenance in the TUI, search their text, or copy artifact paths.", publicDocs: true },
 	{ name: "sources", args: "", section: "Project & Session", description: "Browse citations from the latest assistant answer; open or copy a source URL.", publicDocs: true },
 	{ name: "compare-provenance", args: "", section: "Project & Session", description: "Compare verification and source-coverage metadata from two completed research runs.", publicDocs: true },
 	{ name: "model-routes", args: "", section: "Agents & Delegation", description: "Configure ordered routes for evidence-scout, scribe, auditor, critic, and reviser; choose Pi-override or parent-model inheritance.", publicDocs: true },
 	{ name: "service-tier", args: "", section: "Project & Session", description: "View or set the provider service tier override for supported models.", publicDocs: true },
-	{ name: "tools", args: "", section: "Project & Session", description: "Browse public research tools with their source and parameter summary.", publicDocs: true },
+	{ name: "tools", args: "", section: "Project & Session", description: "Browse public research tools, including science search with optional local Laya reranking, with their source and parameter summary.", publicDocs: true },
 ];
 
 export const livePackageCommandGroups = [
@@ -120,7 +120,7 @@ export const cliCommandSections = [
 		title: "Model Management",
 		commands: [
 			{ usage: "hypatia model list", description: "List available models in Pi auth storage." },
-			{ usage: "hypatia model login [id]", description: "Authenticate a model provider with OAuth or API-key setup." },
+			{ usage: "hypatia model login [id]", description: "Authenticate a model provider with OAuth or API-key setup; legacy Azure settings migrate to `azure` on startup." },
 			{ usage: "hypatia model logout [id]", description: "Clear stored auth for a model provider." },
 			{ usage: "hypatia model set [provider/model]", description: "Set the default approved research model (also accepts provider:model); without one, pick from a list." },
 			{ usage: "hypatia model routes [--json]", description: "Configure ordered routes for evidence-scout, scribe, auditor, critic, and reviser; choose Pi-override or parent-model inheritance, or inspect resolved routes as JSON." },

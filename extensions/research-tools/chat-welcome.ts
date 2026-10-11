@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
-import { getCapabilities, getCellDimensions, getImageDimensions, getKeybindings, Image, matchesKey, truncateToWidth, visibleWidth, type Component, type KeyId, type TUI } from "@earendil-works/pi-tui";
+import { getCapabilities, getCellDimensions, getImageDimensions, getKeybindings, Image, Key, matchesKey, truncateToWidth, visibleWidth, type Component, type KeyId, type TUI } from "@earendil-works/pi-tui";
 import { CHAT_LOGO_RASTER_DEFLATE_BASE64, CHAT_LOGO_RASTER_HEIGHT, CHAT_LOGO_RASTER_WIDTH } from "./chat-logo-raster.js";
 import type { ChatTips } from "./chat-tips.js";
 
@@ -87,6 +87,40 @@ function isShortcutInput(data: string): boolean {
 	});
 }
 
+const QUICK_COMMANDS = [
+	["/lit <topic>", "Review papers, consensus, and open questions"],
+	["/deepresearch <topic>", "Run a source-heavy investigation"],
+	["/compare <sources>", "Map agreements and disagreements"],
+	["/review <paper>", "Critique claims, methods, and evidence"],
+	["/idea <goal>", "Generate bounded research ideas"],
+	["/autoresearch <idea>", "Prepare a bounded benchmark run"],
+	["/recipe <task>", "Find implementable ML training recipes"],
+	["/help", "Browse all Hypatia commands"],
+] as const;
+
+class QuickCommands implements Component {
+	constructor(private readonly tui: TUI, private readonly activeTheme: () => Theme) {}
+	invalidate(): void {}
+
+	render(width: number): string[] {
+		if (width < 24) return [];
+		const theme = this.activeTheme();
+		const compact = this.tui.mode === "fullscreen" && this.tui.terminal.rows < 22;
+		const commands = compact ? [QUICK_COMMANDS[0]!, QUICK_COMMANDS[1]!, QUICK_COMMANDS[4]!, QUICK_COMMANDS[5]!, QUICK_COMMANDS[7]!] : QUICK_COMMANDS;
+		const commandWidth = Math.min(28, Math.floor(width * 0.38));
+		const descriptionWidth = Math.max(8, width - commandWidth - 7);
+		return [
+			theme.fg("text", theme.bold("To get started, try a research command:")),
+			...commands.map(([command, description]) => {
+				const label = truncateToWidth(command, commandWidth, "…");
+				const gap = " ".repeat(Math.max(1, commandWidth - visibleWidth(label) + 2));
+				return truncateToWidth(`  ${theme.fg("accent", label)}${gap}${theme.fg("muted", truncateToWidth(description, descriptionWidth, "…"))}`, width, "…");
+			}),
+			theme.fg("dim", "Type / for command autocomplete · /help opens the command picker"),
+		];
+	}
+}
+
 class WelcomeLogo implements Component {
 	private imageKey = "";
 	private image?: Image;
@@ -151,40 +185,46 @@ function hasConversation(ctx: ExtensionContext): boolean {
 
 export function registerChatWelcome(pi: ExtensionAPI, tips: ChatTips): { refresh(): void } {
 	let current: ExtensionContext | undefined;
-	let eligible = false;
-	let visible = false;
+	let eligible = false, commandsVisible = false;
+	let visible: "logo" | "commands" | undefined;
 	let welcomeAllowedForSession = false;
 	let stopInput: (() => void) | undefined;
 
 	const refresh = (): void => {
 		const ctx = current;
 		if (!ctx || ctx.mode !== "tui" || !ctx.hasUI) return;
-		if (ctx.ui.getEditorText().trimStart().startsWith("/")) eligible = false;
-		const next = eligible && !hasConversation(ctx) && ctx.isIdle() && !ctx.hasPendingMessages();
+		const next: "logo" | "commands" | undefined = eligible && !hasConversation(ctx) && ctx.isIdle() && !ctx.hasPendingMessages()
+			? "logo" : commandsVisible && !hasConversation(ctx) && !ctx.hasPendingMessages() ? "commands" : undefined;
 		if (next === visible) return;
 		visible = next;
-		tips.setWelcomeVisible(visible);
+		tips.setWelcomeVisible(visible !== undefined);
 		if (!visible) { ctx.ui.setWidget(WIDGET_KEY, undefined); return; }
-		ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => new WelcomeLogo(tui, () => ctx.ui.theme ?? theme), { placement: "aboveEditor" });
+		const view = visible;
+		ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => view === "logo"
+			? new WelcomeLogo(tui, () => ctx.ui.theme ?? theme)
+			: new QuickCommands(tui, () => ctx.ui.theme ?? theme), { placement: "aboveEditor" });
 	};
 	const stopWelcome = (): void => {
-		eligible = false;
+		if (eligible) { eligible = false; commandsVisible = true; }
 		refresh();
 	};
+	const hideWelcome = (): void => { eligible = false; commandsVisible = false; refresh(); };
 
 	pi.on("session_start", (event, ctx) => {
 		stopInput?.(); stopInput = undefined;
 		current = ctx;
 		welcomeAllowedForSession = event.reason === "startup" || event.reason === "new" || event.reason === "reload";
 		eligible = welcomeAllowedForSession && !hasConversation(ctx);
-		visible = false;
+		commandsVisible = false; visible = undefined;
 		if (ctx.mode !== "tui" || !ctx.hasUI) return;
 		ctx.ui.setWidget(WIDGET_KEY, undefined);
 		const observedContext = ctx;
 		stopInput = ctx.ui.onTerminalInput((data) => {
+			const submittedSlash = matchesKey(data, Key.enter) && ctx.ui.getEditorText().trimStart().startsWith("/");
 			queueMicrotask(() => {
 				if (current !== observedContext) return;
-				if (isShortcutInput(data) || observedContext.ui.getEditorText().trimStart().startsWith("/")) stopWelcome();
+				if (submittedSlash) hideWelcome();
+				else if (isShortcutInput(data) || observedContext.ui.getEditorText().length > 0) stopWelcome();
 				else refresh();
 			});
 			return undefined;
@@ -192,22 +232,23 @@ export function registerChatWelcome(pi: ExtensionAPI, tips: ChatTips): { refresh
 		refresh();
 	});
 	pi.on("input", (event) => {
-		if (event.source === "interactive" && event.text.trim()) stopWelcome();
+		if (event.source === "interactive" && event.text.trim()) hideWelcome();
 	});
 	pi.on("message_start", (event) => {
-		if (event.message.role === "user") stopWelcome();
+		if (event.message.role === "user") hideWelcome();
 	});
-	pi.on("turn_start", stopWelcome);
+	pi.on("turn_start", hideWelcome);
 	pi.on("session_tree", () => {
 		if (!current) return;
 		eligible = welcomeAllowedForSession && !hasConversation(current);
+		commandsVisible = false;
 		refresh();
 	});
-	pi.on("agent_end", () => { tips.setWelcomeVisible(false); });
+	pi.on("agent_end", refresh);
 	pi.on("session_shutdown", () => {
 		stopInput?.(); stopInput = undefined;
 		if (current?.mode === "tui" && current.hasUI) current.ui.setWidget(WIDGET_KEY, undefined);
-		current = undefined; eligible = false; visible = false; welcomeAllowedForSession = false;
+		current = undefined; eligible = false; commandsVisible = false; visible = undefined; welcomeAllowedForSession = false;
 		tips.setWelcomeVisible(false);
 	});
 	return { refresh };

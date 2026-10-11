@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { registerDiscoveryCommands } from "../extensions/research-tools/discovery.js";
-import { registerHelpCommand } from "../extensions/research-tools/help.js";
+import { buildHelpSections, registerHelpCommand } from "../extensions/research-tools/help.js";
 
 test("Hypatia help omits generic scheduler and process package commands", async () => {
 	const registered = new Map<string, { handler: (_args: string[], ctx: unknown) => Promise<void> }>();
@@ -31,14 +32,21 @@ test("Hypatia help omits generic scheduler and process package commands", async 
 			registered.set(name, command);
 		},
 	};
-	const selectedItems: string[][] = [];
+	let panel: { render(width: number): string[]; handleInput(data: string): void; focused: boolean } | undefined;
+	let editorText = "";
 	const ctx = {
+		mode: "tui",
+		hasUI: true,
 		ui: {
-			select: async (_title: string, items: string[]) => {
-				selectedItems.push(items);
-				return undefined;
+			custom: async (factory: (tui: unknown, theme: unknown, keys: unknown, done: () => void) => typeof panel) => {
+				panel = factory({ terminal: { rows: 24 }, requestRender() {} }, {
+					fg: (_color: string, text: string) => text,
+					bold: (text: string) => text,
+					style: (text: string) => text,
+					colors: { customMessageBg: "", selectedBg: "" },
+				}, undefined, () => {});
 			},
-			setEditorText: () => undefined,
+			setEditorText: (value: string) => { editorText = value; },
 			notify: () => undefined,
 		},
 	};
@@ -46,14 +54,22 @@ test("Hypatia help omits generic scheduler and process package commands", async 
 	registerHelpCommand(pi as any);
 	await registered.get("help")?.handler([], ctx);
 
-	const helpItems = selectedItems[0] ?? [];
-	assert.ok(helpItems.some((item) => item.startsWith("/search ")));
-	assert.ok(helpItems.some((item) => item.startsWith("/lit ")));
-	assert.ok(helpItems.some((item) => item.startsWith("/deepresearch ")));
-	assert.ok(helpItems.some((item) => item.startsWith("/websearch ")));
-	assert.ok(helpItems.some((item) => item.startsWith("/hotkeys ")));
-	assert.equal(helpItems.some((item) => item.startsWith("/ps ")), false);
-	assert.equal(helpItems.some((item) => item.startsWith("/schedule-prompt ")), false);
+	assert.ok(panel);
+	const commands = buildHelpSections(pi as any).flatMap((section) => section.commands.map((command) => command.usage));
+	assert.ok(commands.some((item) => item.startsWith("/search")));
+	assert.ok(commands.some((item) => item.startsWith("/lit ")));
+	assert.ok(commands.some((item) => item.startsWith("/deepresearch ")));
+	assert.ok(commands.some((item) => item.startsWith("/websearch")));
+	assert.ok(commands.some((item) => item.startsWith("/hotkeys")));
+	assert.equal(commands.some((item) => item.startsWith("/ps ")), false);
+	assert.equal(commands.some((item) => item.startsWith("/schedule-prompt ")), false);
+	panel.focused = true;
+	panel.handleInput("/");
+	for (const key of "deepresearch") panel.handleInput(key);
+	panel.handleInput("\r");
+	panel.handleInput("\r");
+	assert.equal(editorText, "/deepresearch ");
+	assert.ok(panel.render(100).every((line) => visibleWidth(line) <= 100));
 });
 
 test("Hypatia tool browser omits generic scheduler and process package tools", async () => {

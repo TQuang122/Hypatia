@@ -87,7 +87,7 @@ function integer(value, field, rowNumber) {
 	return parsed;
 }
 
-function normalizeCandidates(rows) {
+function normalizeCandidates(rows, rankField) {
 	if (rows.length === 0) throw new Error("candidate input contains no rows.");
 	const ids = new Set();
 	const ranks = new Set();
@@ -104,38 +104,46 @@ function normalizeCandidates(rows) {
 		const abstract = row.abstract ?? "";
 		if (typeof abstract !== "string") throw new Error(`candidate row ${rowNumber}: abstract must be a string.`);
 		const relevance = integer(row.relevance, "relevance", rowNumber);
-		const jevRank = integer(row.jev_rank, "jev_rank", rowNumber);
+		const candidateRank = integer(row[rankField], rankField, rowNumber);
 		if (relevance < 0 || relevance > 3) throw new Error(`candidate row ${rowNumber}: relevance must be between 0 and 3.`);
-		if (jevRank < 1) throw new Error(`candidate row ${rowNumber}: jev_rank must be positive.`);
-		const id = `${queryId}\u0000${candidateId}`;
-		const rank = `${queryId}\u0000${jevRank}`;
+		if (candidateRank < 1) throw new Error(`candidate row ${rowNumber}: ${rankField} must be positive.`);
+		const id = JSON.stringify([queryId, candidateId]);
+		const rank = JSON.stringify([queryId, candidateRank]);
 		if (ids.has(id)) throw new Error(`candidate row ${rowNumber}: duplicate candidate_id for query_id.`);
-		if (ranks.has(rank)) throw new Error(`candidate row ${rowNumber}: duplicate jev_rank for query_id.`);
+		if (ranks.has(rank)) throw new Error(`candidate row ${rowNumber}: duplicate ${rankField} for query_id.`);
 		if (queries.has(queryId) && queries.get(queryId) !== query) {
 			throw new Error(`candidate row ${rowNumber}: query text differs within query_id.`);
 		}
 		ids.add(id);
 		ranks.add(rank);
 		queries.set(queryId, query);
-		return { queryId, candidateId, query, title, abstract: abstract.trim(), relevance, jevRank };
+		return {
+			queryId,
+			candidateId,
+			query,
+			title,
+			abstract: abstract.trim(),
+			relevance,
+			...(rankField === "jev_rank" ? { jevRank: candidateRank } : { baselineRank: candidateRank }),
+		};
 	});
 }
 
-function mergeJevRanks(labelRows, rankingRows) {
-	if (labelRows.length === 0 || rankingRows.length === 0) throw new Error("label and Jev ranking files must both contain rows.");
-	if (labelRows.some((row) => String(row.jev_rank ?? "").trim() !== "")) {
-		throw new Error("provide Jev ranks inline or in a separate file, not both.");
+function mergeRankings(labelRows, rankingRows, { name, rowName, rankField, allowRankAlias = false }) {
+	if (labelRows.length === 0 || rankingRows.length === 0) throw new Error(`label and ${name} ranking files must both contain rows.`);
+	if (labelRows.some((row) => String(row[rankField] ?? "").trim() !== "")) {
+		throw new Error(`provide ${name} ranks inline or in a separate file, not both.`);
 	}
 	const rankMap = new Map();
 	for (const [index, row] of rankingRows.entries()) {
 		if (typeof row !== "object" || row === null || Array.isArray(row)) {
-			throw new Error(`Jev row ${index + 1} must be an object.`);
+			throw new Error(`${rowName} ${index + 1} must be an object.`);
 		}
 		const queryId = requiredText(row, "query_id", index + 1);
 		const candidateId = requiredText(row, "candidate_id", index + 1);
-		const rankValue = row.jev_rank ?? row.rank;
-		const key = `${queryId}\u0000${candidateId}`;
-		if (rankMap.has(key)) throw new Error(`Jev row ${index + 1}: duplicate candidate for query_id.`);
+		const rankValue = allowRankAlias ? row[rankField] ?? row.rank : row[rankField];
+		const key = JSON.stringify([queryId, candidateId]);
+		if (rankMap.has(key)) throw new Error(`${rowName} ${index + 1}: duplicate candidate for query_id.`);
 		rankMap.set(key, rankValue);
 	}
 	const labelKeys = new Set();
@@ -146,17 +154,34 @@ function mergeJevRanks(labelRows, rankingRows) {
 		}
 		const queryId = requiredText(row, "query_id", index + 1);
 		const candidateId = requiredText(row, "candidate_id", index + 1);
-		const key = `${queryId}\u0000${candidateId}`;
+		const key = JSON.stringify([queryId, candidateId]);
 		labelKeys.add(key);
 		if (!rankMap.has(key)) {
 			missing += 1;
 			return row;
 		}
-		return { ...row, jev_rank: rankMap.get(key) };
+		return { ...row, [rankField]: rankMap.get(key) };
 	});
 	const extra = [...rankMap.keys()].filter((key) => !labelKeys.has(key)).length;
-	if (missing || extra) throw new Error(`label and Jev candidate IDs do not match (missing=${missing}, extra=${extra}).`);
+	if (missing || extra) throw new Error(`label and ${name} candidate IDs do not match (missing=${missing}, extra=${extra}).`);
 	return joined;
+}
+
+function mergeJevRanks(labelRows, rankingRows) {
+	return mergeRankings(labelRows, rankingRows, {
+		name: "Jev",
+		rowName: "Jev row",
+		rankField: "jev_rank",
+		allowRankAlias: true,
+	});
+}
+
+function mergeBaselineRanks(labelRows, rankingRows) {
+	return mergeRankings(labelRows, rankingRows, {
+		name: "baseline",
+		rowName: "baseline ranking row",
+		rankField: "baseline_rank",
+	});
 }
 
 export function parseCutoffs(value) {
@@ -168,27 +193,61 @@ export function parseCutoffs(value) {
 	return cutoffs;
 }
 
-export function loadCandidateRows(labelsPath, rankingPath) {
+export function loadCandidateRows(labelsPath, {
+	jevRankingsPath = null,
+	baselineName = null,
+	baselineRankingsPath = null,
+} = {}) {
+	const normalizedBaselineName = baselineName === null ? null : baselineName.trim();
+	if (normalizedBaselineName === "") throw new Error("baseline-name must be a non-empty string.");
+	if (normalizedBaselineName === null && baselineRankingsPath !== null) {
+		throw new Error("--baseline-rankings requires --baseline-name.");
+	}
+	if (normalizedBaselineName !== null && jevRankingsPath !== null) {
+		throw new Error("--baseline-name cannot be combined with --jev-rankings.");
+	}
+	if (baselineRankingsPath !== null && jevRankingsPath !== null) {
+		throw new Error("--baseline-rankings cannot be combined with --jev-rankings.");
+	}
 	const resolvedLabelsPath = resolve(labelsPath);
 	const labelBytes = readFileSync(resolvedLabelsPath);
 	const labelRows = readRows(resolvedLabelsPath);
-	const resolvedRankingPath = rankingPath ? resolve(rankingPath) : null;
-	const rankingBytes = resolvedRankingPath ? readFileSync(resolvedRankingPath) : null;
-	const rows = resolvedRankingPath
-		? mergeJevRanks(labelRows, readRows(resolvedRankingPath))
-		: labelRows;
+	const resolvedJevRankingsPath = jevRankingsPath ? resolve(jevRankingsPath) : null;
+	const resolvedBaselineRankingsPath = baselineRankingsPath ? resolve(baselineRankingsPath) : null;
+	const jevRankingBytes = resolvedJevRankingsPath ? readFileSync(resolvedJevRankingsPath) : null;
+	const baselineRankingBytes = resolvedBaselineRankingsPath ? readFileSync(resolvedBaselineRankingsPath) : null;
+	const rankField = normalizedBaselineName === null
+		? "jev_rank"
+		: resolvedBaselineRankingsPath ? "baseline_rank" : "retrieval_rank";
+	let rows = labelRows;
+	if (resolvedBaselineRankingsPath) rows = mergeBaselineRanks(labelRows, readRows(resolvedBaselineRankingsPath));
+	else if (resolvedJevRankingsPath) rows = mergeJevRanks(labelRows, readRows(resolvedJevRankingsPath));
 	return {
-		rows: normalizeCandidates(rows),
+		rows: normalizeCandidates(rows, rankField),
 		label: {
 			name: basename(resolvedLabelsPath),
 			sha256: createHash("sha256").update(labelBytes).digest("hex"),
 		},
-		jev: resolvedRankingPath
-			? {
-					name: basename(resolvedRankingPath),
-					sha256: createHash("sha256").update(rankingBytes).digest("hex"),
-				}
-			: "inline",
+		jev: normalizedBaselineName !== null
+			? null
+			: resolvedJevRankingsPath
+				? {
+						name: basename(resolvedJevRankingsPath),
+						sha256: createHash("sha256").update(jevRankingBytes).digest("hex"),
+					}
+				: "inline",
+		baseline: normalizedBaselineName === null
+			? null
+			: {
+					name: normalizedBaselineName,
+					rankings: resolvedBaselineRankingsPath
+						? {
+								name: basename(resolvedBaselineRankingsPath),
+								sha256: createHash("sha256").update(baselineRankingBytes).digest("hex"),
+							}
+						: "inline",
+					rankField: resolvedBaselineRankingsPath ? "baseline_rank" : "retrieval_rank",
+				},
 	};
 }
 

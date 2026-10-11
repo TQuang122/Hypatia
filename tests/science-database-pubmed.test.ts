@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 import { registerScienceDatabaseTools } from "../extensions/research-tools/science-databases.js";
+import { parsePubmedArticles } from "../extensions/research-tools/science-database-pubmed-parsers.js";
 
 type Tool = {
 	execute: (toolCallId: string, params: Record<string, unknown>) => Promise<{ content: Array<{ text: string }>; details: unknown }>;
@@ -75,6 +76,20 @@ const jatsXml = [
 	"<body><sec><title>Introduction</title><p>Intro body.</p></sec><sec><title>Methods</title><p>Methods body.</p></sec></body>",
 	"</article>",
 ].join("");
+
+test("PubMed XML preserves inline title and abstract text plus every author affiliation", () => {
+	const xml = [
+		"<PubmedArticleSet><PubmedArticle><MedlineCitation><Article>",
+		"<ArticleTitle>Role of <i>BRCA1</i> in <b>DNA</b> repair</ArticleTitle>",
+		"<Abstract><AbstractText>Loss of <i>BRCA1</i> changes <b>DNA repair</b>.</AbstractText></Abstract>",
+		"<AuthorList><Author><LastName>Jones</LastName><AffiliationInfo><Affiliation>First Institute</Affiliation></AffiliationInfo><AffiliationInfo><Affiliation>Second University</Affiliation></AffiliationInfo></Author></AuthorList>",
+		"</Article></MedlineCitation></PubmedArticle></PubmedArticleSet>",
+	].join("");
+	const article = parsePubmedArticles(xml)[0];
+	assert.equal(article?.title, "Role of BRCA1 in DNA repair");
+	assert.equal(article?.abstract, "Loss of BRCA1 changes DNA repair.");
+	assert.deepEqual((article?.authors as Array<{ affiliations: string[] }>)[0]?.affiliations, ["First Institute", "Second University"]);
+});
 
 test("PubMed source supports metadata, ID conversion, related links, full text, copyright, and citation lookup modes", async () => {
 	process.env.NCBI_EMAIL = "research@example.edu";

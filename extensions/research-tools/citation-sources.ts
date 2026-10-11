@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { copyToClipboard, type ExtensionAPI, type ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { getExtensionCommandSpec } from "../../metadata/commands.mjs";
+import { CitationSourcesPanel } from "./citation-sources-panel.js";
 
 export type CitationSource = { title: string; url: string; identifier?: string; verification?: string };
 
@@ -44,13 +45,13 @@ function answerText(ctx: SourcesContext): string {
 	return "";
 }
 
-function openSource(url: string): void {
+function openSource(url: string, onError: (message: string) => void): void {
 	const parsed = new URL(url);
 	if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Only HTTP(S) source links can be opened.");
 	const [command, args] = process.platform === "darwin" ? ["open", [url]]
 		: process.platform === "win32" ? ["rundll32.exe", ["url.dll,FileProtocolHandler", url]] : ["xdg-open", [url]];
 	const child = spawn(command, args, { detached: true, stdio: "ignore" });
-	child.on("error", () => {});
+	child.on("error", (error) => onError(error.message));
 	child.unref();
 }
 
@@ -58,18 +59,13 @@ export async function runSourcesCommand(ctx: SourcesContext): Promise<void> {
 	if (ctx.mode !== "tui" || !ctx.hasUI) { ctx.ui.notify("/sources requires the interactive TUI.", "warning"); return; }
 	const sources = extractCitationSources(answerText(ctx));
 	if (!sources.length) { ctx.ui.notify("No source links or DOI/arXiv identifiers in the latest answer.", "info"); return; }
-	const labels = sources.map((source) => [source.title, source.identifier, source.verification, source.url].filter(Boolean).join(" · "));
-	while (true) {
-		const choice = await ctx.ui.select("Sources in latest answer", labels);
-		if (!choice) return;
-		const source = sources[labels.indexOf(choice)];
-		if (!source) continue;
-		const action = await ctx.ui.select(`${source.title}\n${source.identifier ?? ""}\n${source.url}`, ["Open URL", "Copy URL", "Back"]);
-		try {
-			if (action === "Open URL") openSource(source.url);
-			else if (action === "Copy URL") { await copyToClipboard(source.url); ctx.ui.notify("Source URL copied", "info"); }
-		} catch (error) { ctx.ui.notify(error instanceof Error ? error.message : String(error), "warning"); }
-	}
+	await ctx.ui.custom<void>((tui, theme, _keys, done) => new CitationSourcesPanel(tui, {
+		sources,
+		theme: () => ctx.ui.theme ?? theme,
+		copyUrl: copyToClipboard,
+		openUrl: openSource,
+		done,
+	}), { overlay: true, overlayOptions: { anchor: "bottom-center", width: "96%", maxHeight: "78%", offsetY: -5, margin: 1 } });
 }
 
 export function registerCitationSourcesCommand(pi: Pick<ExtensionAPI, "registerCommand">): void {

@@ -26,6 +26,8 @@ OAuth opens a browser to sign in. On a remote or headless machine where the brow
 
 Credentials are stored in `~/.hypatia/agent/auth.json` with user-only file permissions. Setting the key in your shell or `.env` keeps it off disk.
 
+For Azure OpenAI, use `hypatia model login azure`, set `AZURE_OPENAI_API_KEY`, and provide either `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. On startup, Hypatia migrates legacy `azure-openai-responses` provider entries in `auth.json`, `models.json`, `settings.json`, and `model-routes.json` to `azure`. If old and new entries conflict or a route would become duplicated, startup stops before changing those files so you can merge them safely.
+
 Once a provider is connected, setup picks the recommended research model from what you are signed in to, such as `openai/gpt-5.6-terra` or `anthropic/claude-opus-5-5`. If you already have a valid default, setup keeps it. To change it later:
 
 ```bash

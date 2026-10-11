@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, unlinkSync, watch, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -46,6 +46,12 @@ test("normalizeThinkingLevel rejects unknown values", () => {
 	assert.equal(normalizeThinkingLevel(undefined), undefined);
 });
 
+test("Azure API-key setup uses the provider ID expected by the installed Pi", () => {
+	const azure = MODEL_API_KEY_PROVIDERS.find((provider) => provider.label.startsWith("Azure OpenAI"));
+	assert.equal(azure?.id, "azure");
+	assert.equal(azure?.envVar, "AZURE_OPENAI_API_KEY");
+});
+
 test("first run writes the bundled defaults and loads Hypatia plus its bundled Pi packages", async (t) => {
 	const root = mkdtempSync(join(tmpdir(), "hypatia-settings-first-run-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -61,6 +67,97 @@ test("first run writes the bundled defaults and loads Hypatia plus its bundled P
 	assert.deepEqual(settings.packages, getHypatiaPackageSources(appRoot));
 	assert.equal(settings.packages[0], appRoot);
 	assert.equal(settings.packages.length, 1 + BUNDLED_PI_PACKAGES.length);
+});
+
+test("legacy Azure provider config migrates auth, models, and the saved default without losing settings", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "hypatia-azure-provider-migration-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const settingsPath = join(root, "settings.json");
+	const authPath = join(root, "auth.json");
+	const modelsPath = join(root, "models.json");
+	writeFileSync(authPath, JSON.stringify({ "azure-openai-responses": { type: "api_key", key: "test-azure-key" } }));
+	writeFileSync(modelsPath, JSON.stringify({ providers: {
+		"azure-openai-responses": {
+			baseUrl: "https://azure.example.com",
+			api: "azure-openai-responses",
+			models: [{ id: "deployment", name: "Deployment" }],
+		},
+	} }));
+	const routesPath = join(root, "model-routes.json");
+	writeFileSync(routesPath, JSON.stringify({ version: 1, roles: { auditor: ["azure-openai-responses/deployment"] } }));
+	writeFileSync(settingsPath, JSON.stringify({
+		defaultProvider: "azure-openai-responses",
+		defaultModel: "deployment",
+		quietStartup: true,
+		subagents: {
+			agentOverrides: { critic: { model: "azure-openai-responses/deployment" } },
+			agentOverridesByProvider: {
+				"openai-codex": { auditor: { model: "azure-openai-responses/deployment" } },
+			},
+		},
+	}));
+
+	await ensureHypatiaSettings(settingsPath, bundledSettingsPath, appRoot, "medium", authPath);
+
+	const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+	assert.equal(settings.defaultProvider, "azure");
+	assert.equal(settings.defaultModel, "deployment");
+	assert.equal(settings.quietStartup, true);
+	assert.equal(settings.subagents.agentOverrides.critic.model, "azure/deployment");
+	assert.equal(settings.subagents.agentOverridesByProvider["openai-codex"].auditor.model, "azure/deployment");
+	const auth = JSON.parse(readFileSync(authPath, "utf8"));
+	assert.deepEqual(auth.azure, { type: "api_key", key: "test-azure-key" });
+	assert.equal(Object.hasOwn(auth, "azure-openai-responses"), false);
+	const models = JSON.parse(readFileSync(modelsPath, "utf8"));
+	assert.deepEqual(models.providers.azure, {
+		baseUrl: "https://azure.example.com",
+		api: "azure-openai-responses",
+		models: [{ id: "deployment", name: "Deployment" }],
+	});
+	assert.equal(Object.hasOwn(models.providers, "azure-openai-responses"), false);
+	assert.deepEqual(JSON.parse(readFileSync(routesPath, "utf8")), { version: 1, roles: { auditor: ["azure/deployment"] } });
+});
+
+test("Azure migration refuses conflicting provider entries without partially rewriting user files", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "hypatia-azure-provider-conflict-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const settingsPath = join(root, "settings.json");
+	const authPath = join(root, "auth.json");
+	const modelsPath = join(root, "models.json");
+	writeFileSync(authPath, JSON.stringify({
+		"azure-openai-responses": { type: "api_key", key: "legacy-key" },
+		azure: { type: "api_key", key: "different-key" },
+	}));
+	writeFileSync(modelsPath, JSON.stringify({ providers: { "azure-openai-responses": { baseUrl: "https://legacy.example.com" } } }));
+	writeFileSync(settingsPath, JSON.stringify({ defaultProvider: "azure-openai-responses", defaultModel: "deployment" }));
+	const before = [authPath, modelsPath, settingsPath].map((path) => readFileSync(path, "utf8"));
+
+	await assert.rejects(
+		ensureHypatiaSettings(settingsPath, bundledSettingsPath, appRoot, "medium", authPath),
+		/both.*azure.*auth\.json/i,
+	);
+	assert.deepEqual([authPath, modelsPath, settingsPath].map((path) => readFileSync(path, "utf8")), before);
+});
+
+test("Azure migration refuses routes that would become duplicate model choices", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "hypatia-azure-route-conflict-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const settingsPath = join(root, "settings.json");
+	const authPath = join(root, "auth.json");
+	const routesPath = join(root, "model-routes.json");
+	writeFileSync(authPath, "{}\n");
+	writeFileSync(settingsPath, JSON.stringify({ defaultProvider: "azure-openai-responses", defaultModel: "deployment" }));
+	writeFileSync(routesPath, JSON.stringify({
+		version: 1,
+		roles: { auditor: ["azure-openai-responses/deployment", "azure/deployment"] },
+	}));
+	const before = [authPath, settingsPath, routesPath].map((path) => readFileSync(path, "utf8"));
+
+	await assert.rejects(
+		ensureHypatiaSettings(settingsPath, bundledSettingsPath, appRoot, "medium", authPath),
+		/duplicate model routes in model-routes\.json/i,
+	);
+	assert.deepEqual([authPath, settingsPath, routesPath].map((path) => readFileSync(path, "utf8")), before);
 });
 
 test("later runs only add missing keys and leave an unchanged file alone", async (t) => {
@@ -272,15 +369,6 @@ test("startup waits for the active agent-name migration before reading settings"
 	}));
 	writeFileSync(lockPath, "other-startup\n");
 
-	const watcher = watch(join(root, "agent"), { encoding: "utf8", persistent: false });
-	t.after(() => watcher.close());
-	const markerChanged = new Promise<void>((resolveMarker) => {
-		const resolveIfMarker = (_eventType: string, filename: string | Buffer | null) => {
-			if (filename?.toString() === markerName) resolveMarker();
-		};
-		watcher.on("change", resolveIfMarker);
-		watcher.on("rename", resolveIfMarker);
-	});
 	const startup = ensureHypatiaSettings(settingsPath, bundledSettingsPath, appRoot, "medium", authPath);
 	const settledBeforeMigration = await Promise.race([
 		startup.then(() => true),
@@ -301,18 +389,17 @@ test("startup waits for the active agent-name migration before reading settings"
 	writeFileSync(markerPath, "1\n");
 	unlinkSync(lockPath);
 
-	let markerTimeout: NodeJS.Timeout | undefined;
+	let startupTimeout: NodeJS.Timeout | undefined;
 	try {
 		await Promise.race([
-			markerChanged,
-			new Promise<never>((_resolveMarker, rejectMarker) => {
-				markerTimeout = setTimeout(() => rejectMarker(new Error("Migration marker watcher timed out")), 3_000);
+			startup,
+			new Promise<never>((_resolveStartup, rejectStartup) => {
+				startupTimeout = setTimeout(() => rejectStartup(new Error("Settings startup did not resume after migration lock release")), 3_000);
 			}),
 		]);
 	} finally {
-		if (markerTimeout) clearTimeout(markerTimeout);
+		if (startupTimeout) clearTimeout(startupTimeout);
 	}
-	await startup;
 
 	assert.deepEqual(JSON.parse(readFileSync(settingsPath, "utf8")).subagents.agentOverrides, {
 		"evidence-scout": { model: "openai/legacy-hypatia-research" },

@@ -30,7 +30,7 @@ Hypatia's own extension registers these tools and commands:
 | Group | Contents |
 | --- | --- |
 | AlphaXiv tools | `alpha_search`, `alpha_get_paper`, `alpha_ask_paper`, `alpha_read_code`, `alpha_annotate_paper`, `alpha_list_annotations` |
-| Science database search | `hypatia_science_database_search` over Semantic Scholar, OpenAlex, arXiv IDs, PubMed, Europe PMC, bioRxiv/medRxiv, Crossref, CORE, and DOAB |
+| Science database search | `hypatia_science_database_search` over Semantic Scholar, OpenAlex, arXiv IDs, PubMed, Europe PMC, bioRxiv/medRxiv, Crossref, CORE, and DOAB; optionally reranks topical results through a loopback Laya service |
 | Hugging Face Hub tools | `hf_dataset_info`, `hf_repo_files`, `hf_repo_read_file` |
 | Commands | `/help`, `/init`, `/outputs`, `/model-routes`, `/tools`, `/service-tier` |
 
@@ -81,4 +81,4 @@ Core packages are not touched by `hypatia update` because they ship with Hypatia
 
 ## Runtime versions
 
-The package manifest targets Pi 1.1.0 and bundles `pi-subagents` 0.74.0, `pi-web-access` 0.35.0, `pi-docparser` 4.0.0, `pi-btw` 0.7.1, and Alpha Hub 0.1.6. Pi is declared through peer dependencies; the other packages are installed with Hypatia and loaded unmodified. Every release is checked by booting the installed CLI in Pi RPC mode on Linux, macOS, and Windows.
+The package manifest targets Pi 1.1.0 and bundles `pi-subagents` 0.76.1, `pi-web-access` 0.38.0, `pi-docparser` 4.0.0, `pi-btw` 0.7.1, and Alpha Hub 0.1.6. Pi is declared through peer dependencies; the other packages are installed with Hypatia and loaded unmodified. Every release is checked by booting the installed CLI in Pi RPC mode on Linux, macOS, and Windows.

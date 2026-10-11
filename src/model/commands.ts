@@ -860,6 +860,14 @@ export async function authenticateModelProvider(authPath: string, settingsPath?:
 	return false;
 }
 
+export function describeOAuthLoginFailure(providerId: string, error: unknown): unknown {
+	if (!(error instanceof Error) || !error.message.includes("invalid_grant")) return error;
+	const alternative = providerId === "openai" ? " For ChatGPT sign-in, you can also run `hypatia model login openai-codex`." : "";
+	return new Error(
+		`${error.message}\nThe sign-in was rejected, usually because of a stale browser session. Sign out of the provider's site or use a private window, then run \`hypatia model login ${providerId}\` again.${alternative}`,
+	);
+}
+
 export async function loginModelProvider(authPath: string, providerId?: string, settingsPath?: string): Promise<boolean> {
 	if (providerId) {
 		const resolvedProvider = await resolveModelProviderForCommand(authPath, providerId);
@@ -928,6 +936,8 @@ export async function loginModelProvider(authPath: string, providerId?: string, 
 			}
 		},
 		signal: abortController.signal,
+	}).catch((error: unknown) => {
+		throw describeOAuthLoginFailure(provider.id, error);
 	});
 
 	printSuccess(`Model provider login complete: ${provider.id}`);

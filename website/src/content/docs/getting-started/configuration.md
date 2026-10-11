@@ -116,6 +116,8 @@ hypatia model set anthropic/claude-opus-5-5
 
 `hypatia model login` with no provider shows the OAuth and API-key choices. `model set` accepts `provider/model` or `provider:model`. Pro-class model IDs are rejected here and in `--model`. See [Setup](/hypatia/docs/getting-started/setup) for OAuth on headless machines, Amazon Bedrock, and local models.
 
+Azure OpenAI uses provider ID `azure` with Pi 1.1.0. Hypatia migrates the former `azure-openai-responses` provider key across auth, model, default-model, and subagent-route settings on startup. If old and new entries conflict, or a route would become duplicated, Hypatia leaves all four files unchanged and reports the conflict for manual merging.
+
 ## Web search configuration
 
 Web search, page fetching, and PDF extraction come from the bundled `pi-web-access` package, configured in `~/.hypatia/agent/web-search.json`. The default `auto` route works without keys through Exa and uses any other provider you have configured. Set a provider and key from the CLI:
@@ -206,8 +208,33 @@ Hypatia reads these environment variables. `HYPATIA_MODEL`, `HYPATIA_THINKING`, 
 | `HYPATIA_TOOL_BUDGET` | Max top-level tool calls per session; unset means unlimited |
 | `HYPATIA_AUTORESEARCH_ROOT` | Local AutoResearch repository root for validating exported idea provenance |
 | `HYPATIA_CONTEXT7` | Set to `1` to register the Context7 MCP server (versioned library docs, fetched via npx) |
+| `HYPATIA_LAYA_ENABLED` | Set to `1` to enable optional local Laya reranking for topical paper searches (off by default) |
+| `HYPATIA_LAYA_URL` | Loopback HTTP origin for `laya-serve`; defaults to `http://127.0.0.1:8000` and rejects non-loopback hosts |
+| `HYPATIA_LAYA_TIMEOUT_MS` | Per-candidate Laya request timeout in milliseconds; defaults to `2000` |
+| `HYPATIA_LAYA_CONCURRENCY` | Maximum concurrent candidate scores; defaults to `4` and is capped at `8` |
+| `LAYA_API_KEY` | Optional bearer key shared with the local Laya service |
 | `CORE_API_KEY` | Free CORE key ([create one](https://core.ac.uk/services/api)); without one, CORE results are metadata-only with no full text |
 | `UNPAYWALL_EMAIL` | Your email, required for the Unpaywall step of OA recovery (`NCBI_EMAIL` works as a fallback) |
+
+## Optional local Laya reranking
+
+Laya is disabled by default and runs as a separate service. To install it in an isolated Python environment and bind it to loopback:
+
+```bash
+uv venv --python 3.13 ~/.hypatia/laya-py313
+uv pip install --python ~/.hypatia/laya-py313/bin/python 'laya[serve]==0.4.1'
+LAYA_HOST=127.0.0.1 \
+LAYA_PORT=8000 \
+LAYA_DEVICE=cpu \
+LAYA_PRELOAD=1 \
+LAYA_MODELS=english \
+LAYA_DEFAULT_MODEL=english \
+~/.hypatia/laya-py313/bin/laya-serve
+```
+
+Then set `HYPATIA_LAYA_ENABLED=1` in the environment or `.env` file used to launch Hypatia. The optional URL must be an HTTP loopback origin (`127.0.0.1` or `[::1]`); Hypatia never sends candidate text to a remote Laya endpoint. If `LAYA_API_KEY` is set for the service, set the same value for Hypatia. Hypatia checks service liveness before scoring and checks the loaded English checkpoint revision afterward, so lazy loading is supported; preloading is recommended to avoid a cold first request timing out.
+
+Only topical discovery searches through Semantic Scholar, OpenAlex, PubMed, Europe PMC, and CORE are eligible. Exact DOI/PMID and author/citation lookups, arXiv ID lookup, and full-text retrieval are not reranked. Laya reorders the returned candidate set without removing entries and preserves each source rank. Health, timeout, HTTP, or response failures leave the original order intact and show a visible status in the result. For ranking evidence and the default-on acceptance gate, use a held-out labeled query set; enabling the option does not change the default behavior.
 
 ## Telemetry
 

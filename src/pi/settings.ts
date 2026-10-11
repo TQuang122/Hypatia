@@ -6,6 +6,7 @@ import { DefaultPackageManager, loadSkills, SettingsManager, type ModelRegistry,
 
 import { BUNDLED_PI_PACKAGES, getHypatiaPackageSources, resolvePackageRoot } from "./runtime.js";
 import { choosePreferredModelRecord, getAvailableModelRecords } from "../model/catalog.js";
+import { migrateLegacyAzureProviderConfig } from "../model/azure-provider-migration.js";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -360,6 +361,7 @@ async function ensureHypatiaSettingsContents(
 	hideShadowedBundledSkills: boolean,
 	migrationMarkerPath: string,
 ): Promise<void> {
+	migrateLegacyAzureProviderConfig(authPath, settingsPath);
 	// Validate before model discovery or either settings write. Invalid custom
 	// configuration must not silently turn into an empty/default configuration.
 	const subagentDefaults = prepareSubagentDefaults(settingsPath);

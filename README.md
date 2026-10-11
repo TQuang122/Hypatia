@@ -20,7 +20,7 @@ hypatia setup
 hypatia "what do we know about scaling laws"
 ```
 
-For standalone installers, pinned versions, or skills-only installs, see the [installation guide](https://tquang122.github.io/hypatia/docs/getting-started/installation/). The [setup guide](https://tquang122.github.io/hypatia/docs/getting-started/setup/) covers provider sign-in, local models, and editors.
+For standalone installers, pinned versions, or skills-only installs, see the [installation guide](https://tquang122.github.io/hypatia/docs/getting-started/installation/). The [setup guide](https://tquang122.github.io/hypatia/docs/getting-started/setup/) covers provider sign-in, Azure OpenAI, local models, and editors.
 
 ## Use
 
@@ -53,7 +53,7 @@ Run `/outputs` in chat to browse **Reports**, **Provenance**, **Drafts**, and **
 
 Use `/compare-provenance` in the chat TUI to compare the recorded verification and source-coverage fields from two completed runs. It compares metadata only and does not rank the runs.
 
-Use `/sources` to inspect URLs and DOI/arXiv identifiers in the latest assistant answer. Verification status appears only when the answer states it explicitly. In long fullscreen sessions, Hypatia also suggests Pi's transcript search shortcut; short terminals compact the header and hide the welcome art or idle tip to preserve reading space.
+Use `/sources` to browse citations from the latest assistant answer in a scrollable panel. Press `/` to filter, `Enter` to open the selected source, `c` to copy its URL, and `Esc` to close. Verification status appears only when the answer states it explicitly. In long fullscreen sessions, Hypatia also suggests Pi's transcript search shortcut; short terminals compact the header and hide the welcome art or idle tip to preserve reading space.
 
 ## Persistent experiments
 
@@ -75,6 +75,8 @@ Hypatia opens in fullscreen with the Graphite theme. Use `/settings` to change t
   <em>Research workflows in Hypatia's fullscreen chat.</em>
 </p>
 
+- **Quick research commands:** after the welcome logo is dismissed, a compact list of `/lit`, `/deepresearch`, `/idea`, `/autoresearch`, and related commands appears above the composer. It stays visible while you draft and clears when you send. Type `/` for autocomplete or use `/help` to choose a command to prefill.
+- **Command guide:** `/help` opens a searchable, grouped panel with a short detail view. Use arrows to browse, `/` to filter, Enter to prefill the selected command, and Esc to close; selection never submits it.
 - **Input:** `Enter` sends, `Shift+Enter` adds a line, and `Alt+Enter` queues a follow-up. Paste images with the configured shortcut; `/hotkeys` lists bindings.
 - **Activity:** The footer shows the active model and status. Press `Ctrl+O` for tool details or `F2` to review warnings.
 - **Research:** Use `/outputs` to browse reports and provenance. Markdown previews support scrolling and search; paper and code search results expand with `Ctrl+O`.
@@ -92,6 +94,10 @@ The repository includes the fixed research eval plus score adapters for ScholarQ
 ## Sources
 
 Hypatia searches alphaXiv, Semantic Scholar, OpenAlex, arXiv, PubMed, Europe PMC, bioRxiv, medRxiv, Crossref, CORE, DOAB, public GitHub code, the web, and Hugging Face, recovers legal open-access copies for paywalled DOIs, and reads local PDFs and documents. Free `OPENALEX_API_KEY`, `SEMANTIC_SCHOLAR_API_KEY`, and `CORE_API_KEY` keys avoid the shared rate limits; `UNPAYWALL_EMAIL` enables the Unpaywall step of OA recovery. It runs on stock [Pi](https://github.com/earendil-works/pi) with five research agents: evidence-scout, scribe, auditor, critic, and reviser.
+
+### Optional local Laya reranking
+
+Set `HYPATIA_LAYA_ENABLED=1` to rerank topical paper-search results with a separate local `laya-serve` process. It only reorders papers already returned by the selected database; it does not add or discard candidates. Exact identifier/citation lookups and full-text retrieval keep their source order. If Laya is unavailable, Hypatia keeps that order and shows a status message. The feature is off by default and only accepts a loopback service URL. See the [configuration guide](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#optional-local-laya-reranking) for service setup and limits.
 
 ## Telemetry
 

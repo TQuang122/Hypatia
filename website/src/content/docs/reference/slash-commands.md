@@ -7,6 +7,8 @@ order: 2
 
 Slash commands are available inside the Hypatia REPL. They map to research workflows, project utilities, and commands from the bundled Pi packages. Type `/help` inside the REPL for Hypatia's grouped command list.
 
+In a new chat, the welcome logo gives way to a compact list of research commands after your first interaction. The list stays visible while you draft and hides after you send. Type `/` for autocomplete; `/help` opens a picker that prefills your selection without sending it.
+
 ## Research workflows
 
 | Command | Description |
@@ -29,12 +31,12 @@ Workflow prompts can call the bundled agents (evidence-scout, scribe, auditor, c
 | Command | Description |
 | --- | --- |
 | `/log` | Write a durable session log with completed work, findings, open questions, and next steps |
-| `/help` | Show grouped Hypatia commands and prefill the editor with a selected command |
+| `/help` | Search grouped Hypatia commands, inspect a concise detail view, and prefill the composer without sending |
 | `/init` | Bootstrap `AGENTS.md` and session-log folders for a research project |
 | `/idea <research goal>` | Generate bounded research ideas in chat with native Idea Forge |
 | `/experiments` | Native idea creation, experiment setup, review gates, receipts, pause/resume, trees and provenance |
 | `/outputs` | View grouped reports/provenance in the TUI, search text, or copy artifact paths |
-| `/sources` | Browse citations in the latest assistant answer; inspect identifiers and explicitly stated verification status, then open or copy a URL |
+| `/sources` | Browse citations from the latest answer in a scrollable panel; `/` filters, Enter opens, `c` copies the URL, and Esc closes |
 | `/compare-provenance` | Compare recorded source coverage and verification metadata from two completed research runs |
 | `/model-routes` | Configure ordered subagent models and choose Pi-override or parent-model inheritance |
 | `/tools` | Browse public research tools with their source and parameter summary |

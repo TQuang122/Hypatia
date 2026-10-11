@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 
 import { registerScienceDatabaseTools } from "../extensions/research-tools/science-databases.js";
+import { openAlexRequestFailure } from "../extensions/research-tools/science-database-openalex-exact.js";
 
 type Tool = {
 	execute: (toolCallId: string, params: Record<string, unknown>) => Promise<{ content: Array<{ text: string }>; details: unknown }>;
@@ -108,6 +109,20 @@ function source(overrides: Record<string, unknown> = {}): Record<string, unknown
 		...overrides,
 	};
 }
+
+test("OpenAlex 404s for ID lookups explain the entity and point to the matching search tool", () => {
+	const cases = [
+		["https://api.openalex.org/works/Attention%20is%20all%20you%20need", "work", "openalex_search_works"],
+		["https://api.openalex.org/authors/Geoffrey%20Hinton", "author", "openalex_search_authors"],
+		["https://api.openalex.org/sources/S106963461", "source", "openalex_venue_info"],
+	] as const;
+	for (const [endpoint, entity, searchTool] of cases) {
+		const error = openAlexRequestFailure(404, "Not Found", "<html>404 Not Found</html>", false, new URL(endpoint));
+		assert.ok(error.message.includes("no " + entity + ' "'));
+		assert.match(error.message, new RegExp(searchTool));
+		assert.doesNotMatch(error.message, /<html>/);
+	}
+});
 
 test("science database tool exposes OpenAlex works, graph, authors, sources, and key redaction", async () => {
 	const requests: string[] = [];

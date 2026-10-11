@@ -10,6 +10,7 @@ import { searchPubMed } from "./science-database-pubmed.js";
 import { isEuropePmcFullTextQuery, searchEuropePmcFullText } from "./science-database-europepmc-fulltext.js";
 import { createRequestPacer } from "./request-pacer.js";
 import { createPaperSearchRenderers } from "./paper-search-renderer.js";
+import { rerankScienceDatabaseResults } from "./laya-reranker.js";
 
 type ScienceDatabaseSource = "arxiv" | "biorxiv" | "core" | "crossref" | "doab" | "europepmc" | "medrxiv" | "oa" | "openalex" | "pubmed" | "semanticscholar";
 
@@ -448,12 +449,13 @@ export function registerScienceDatabaseTools(pi: ExtensionAPI): void {
 		...createPaperSearchRenderers("database"),
 		label: "Science Database Search",
 		description:
-			"Search read-only scholarly literature databases: Semantic Scholar (citation-sorted by default), OpenAlex, arXiv ID lookup, PubMed (search, metadata, ID conversion, related articles, citation matching, copyright, PMC full-text routing), Europe PMC (metadata and open-access full-text sections), bioRxiv/medRxiv preprints, Crossref DOI metadata, CORE open-access full-text aggregator, DOAB open-access books, and OA recovery (legal open-access copy for a DOI via Unpaywall, Europe PMC, then CORE). Returns stable identifiers, bounded section snippets when requested, source URLs, and endpoint provenance.",
+			"Search read-only scholarly literature databases: Semantic Scholar (citation-sorted by default), OpenAlex, arXiv ID lookup, PubMed (search, metadata, ID conversion, related articles, citation matching, copyright, PMC full-text routing), Europe PMC (metadata and open-access full-text sections), bioRxiv/medRxiv preprints, Crossref DOI metadata, CORE open-access full-text aggregator, DOAB open-access books, and OA recovery (legal open-access copy for a DOI via Unpaywall, Europe PMC, then CORE). When HYPATIA_LAYA_ENABLED=1, eligible topical searches can be reranked by a local loopback Laya service; exact lookups and full-text retrieval are not reranked. Returns stable identifiers, bounded section snippets when requested, source URLs, and endpoint provenance.",
 		promptSnippet: "Search Semantic Scholar, OpenAlex, PubMed, Europe PMC metadata and open-access full-text sections, bioRxiv/medRxiv, Crossref, CORE, or DOAB, or look up arXiv IDs, for source-backed literature evidence.",
 		promptGuidelines: [
 			"Use hypatia_science_database_search to find and pin down papers before making source-backed claims: Semantic Scholar for general discovery (prefer the default citation-count sort, which surfaces seminal work and is the least rate-limited; use sort=pub_date only when recency matters); OpenAlex for cross-discipline works (prefix the query with `semantic:` for embedding search that finds conceptual and recent matches keyword search misses), citation graphs, authors, venues, and OA status; arXiv only to look up known arXiv IDs (it has no topic search); PubMed for biomedical search, PMID metadata, PMID/PMCID/DOI conversion, related articles, citation matching, and copyright checks; Europe PMC for open-access full-text section snippets; bioRxiv/medRxiv for preprint DOI lookup, date/category windows, and published-preprint links; Crossref for DOI metadata; CORE for open-access full text (set CORE_API_KEY for download URLs and full text; without a key results are metadata-only, and `fulltext_only=true` keeps only rows with full text); DOAB for open-access academic books (in the humanities the book, not the article, is the unit of publication); OA recovery (`source: oa` with a DOI) when full text is paywalled — it finds a legal open-access copy via Unpaywall, Europe PMC, then CORE, and discloses where the text actually came from so you cite the version read.",
 			"Exact literature modes: `openalex_search_works`, `openalex_get_work`, `openalex_citations`, `openalex_references`, `openalex_search_authors`, `openalex_get_author`, `openalex_venue_info`, and `arxiv_get_papers` (the arxiv source also accepts bare IDs such as 2309.08600). PubMed accepts `pmid:`, `convert:`, `related:`, `fulltext:`, `copyright:`, and `citation` prefixes; Europe PMC accepts `fulltext:`/`sections:` with a PMCID or PMID. CORE accepts `doi:` and `fulltext_only=true`; DOAB accepts `title:`, `isbn:`, `doi:`, and `author:` prefixes.",
 			"Preserve returned PMIDs, PMCIDs, DOIs, arXiv IDs, Semantic Scholar paper IDs, preprint DOIs, OpenAlex W/A/S IDs, author ORCIDs, citation/reference counts, OA status, Europe PMC full-text statuses and section inventories, source URLs, and endpoint provenance in research artifacts and answers.",
+			"If `layaStatus.state` is `reranked`, use the returned order as a local relevance aid, not as evidence for a claim; original ranks remain in `layaOriginalRank`. If the status is `unavailable`, results retain their source order.",
 			"Treat database summaries as retrieval evidence, then verify decisive claims against the full paper when needed.",
 		],
 		// Some models fill omitted optional fields with "null", which fails validation.
@@ -480,10 +482,12 @@ export function registerScienceDatabaseTools(pi: ExtensionAPI): void {
 			], { description: "PubMed sort order. For semanticscholar, prefer the default citation-count sort; use pub_date (newest first) only when recency matters. relevance falls back to the default when the anonymous pool is rate-limited. Ignored for other sources." })),
 		}),
 		async execute(_toolCallId, params) {
-			const result = await scienceDatabaseSearch(params as ScienceDatabaseSearchParams);
+			const searchParams = params as ScienceDatabaseSearchParams;
+			const result = await scienceDatabaseSearch(searchParams);
+			const delivered = await rerankScienceDatabaseResults(searchParams, result);
 			return {
-				content: [{ type: "text", text: formatText(result) }],
-				details: result,
+				content: [{ type: "text", text: formatText(delivered) }],
+				details: delivered,
 			};
 		},
 	});

@@ -116,6 +116,8 @@ hypatia model set anthropic/claude-opus-5-5
 
 `hypatia model login` with no provider shows the OAuth and API-key choices. `model set` accepts `provider/model` or `provider:model`. Pro-class model IDs are rejected here and in `--model`. See [Setup](/hypatia/docs/getting-started/setup) for OAuth on headless machines, Amazon Bedrock, and local models.
 
+Azure OpenAI uses provider ID `azure` with Pi 1.1.0. Hypatia migrates the former `azure-openai-responses` provider key across auth, model, default-model, and subagent-route settings on startup. If old and new entries conflict, or a route would become duplicated, Hypatia leaves all four files unchanged and reports the conflict for manual merging.
+
 ## Web search configuration
 
 Web search, page fetching, and PDF extraction come from the bundled `pi-web-access` package, configured in `~/.hypatia/agent/web-search.json`. The default `auto` route works without keys through Exa and uses any other provider you have configured. Set a provider and key from the CLI:

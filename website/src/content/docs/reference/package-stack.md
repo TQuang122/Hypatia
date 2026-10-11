@@ -81,4 +81,4 @@ Core packages are not touched by `hypatia update` because they ship with Hypatia
 
 ## Runtime versions
 
-The package manifest targets Pi 1.1.0 and bundles `pi-subagents` 0.74.0, `pi-web-access` 0.35.0, `pi-docparser` 4.0.0, `pi-btw` 0.7.1, and Alpha Hub 0.1.6. Pi is declared through peer dependencies; the other packages are installed with Hypatia and loaded unmodified. Every release is checked by booting the installed CLI in Pi RPC mode on Linux, macOS, and Windows.
+The package manifest targets Pi 1.1.0 and bundles `pi-subagents` 0.76.1, `pi-web-access` 0.38.0, `pi-docparser` 4.0.0, `pi-btw` 0.7.1, and Alpha Hub 0.1.6. Pi is declared through peer dependencies; the other packages are installed with Hypatia and loaded unmodified. Every release is checked by booting the installed CLI in Pi RPC mode on Linux, macOS, and Windows.

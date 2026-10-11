@@ -6,6 +6,8 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 
 ## Unreleased
 
+- **Provider and scholarly-source reliability**: Azure OpenAI settings using Pi's former provider ID migrate to `azure` on startup; conflicting old/new entries or duplicate model routes stop before any config is rewritten. PubMed metadata retains inline text and every author affiliation, OpenAlex missing-ID errors suggest the matching lookup, and rejected OAuth grants include recovery steps. Updated `pi-subagents` to 0.76.1 and `pi-web-access` to 0.38.0.
+
 ## v0.1.0 - 2026-10-10
 
 - **Initial public release**: install the open-source research agent from npm or use the standalone macOS, Linux, and Windows bundles. The CLI is built on stock Pi and includes traceable research workflows and provenance artifacts.

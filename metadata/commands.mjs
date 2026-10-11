@@ -120,7 +120,7 @@ export const cliCommandSections = [
 		title: "Model Management",
 		commands: [
 			{ usage: "hypatia model list", description: "List available models in Pi auth storage." },
-			{ usage: "hypatia model login [id]", description: "Authenticate a model provider with OAuth or API-key setup." },
+			{ usage: "hypatia model login [id]", description: "Authenticate a model provider with OAuth or API-key setup; legacy Azure settings migrate to `azure` on startup." },
 			{ usage: "hypatia model logout [id]", description: "Clear stored auth for a model provider." },
 			{ usage: "hypatia model set [provider/model]", description: "Set the default approved research model (also accepts provider:model); without one, pick from a list." },
 			{ usage: "hypatia model routes [--json]", description: "Configure ordered routes for evidence-scout, scribe, auditor, critic, and reviser; choose Pi-override or parent-model inheritance, or inspect resolved routes as JSON." },

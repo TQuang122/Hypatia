@@ -4,6 +4,9 @@ export type ApiKeyProviderInfo = {
 	envVar?: string;
 };
 
+export const AZURE_PROVIDER_ID = "azure";
+export const LEGACY_AZURE_PROVIDER_ID = "azure-openai-responses";
+
 export const MODEL_API_KEY_PROVIDERS: ApiKeyProviderInfo[] = [
 	{ id: "openai", label: "OpenAI Platform API", envVar: "OPENAI_API_KEY" },
 	{ id: "anthropic", label: "Anthropic API", envVar: "ANTHROPIC_API_KEY" },
@@ -25,5 +28,5 @@ export const MODEL_API_KEY_PROVIDERS: ApiKeyProviderInfo[] = [
 	{ id: "huggingface", label: "Hugging Face", envVar: "HF_TOKEN" },
 	{ id: "opencode", label: "OpenCode Zen", envVar: "OPENCODE_API_KEY" },
 	{ id: "opencode-go", label: "OpenCode Go", envVar: "OPENCODE_API_KEY" },
-	{ id: "azure-openai-responses", label: "Azure OpenAI (Responses)", envVar: "AZURE_OPENAI_API_KEY" },
+	{ id: AZURE_PROVIDER_ID, label: "Azure OpenAI", envVar: "AZURE_OPENAI_API_KEY" },
 ];

@@ -95,6 +95,34 @@ test("search errors and metadata-only notes remain visible in collapsed output",
 	assert.match(note, /Metadata-only/);
 });
 
+test("Laya reranking and fail-open status remain visible in collapsed search results", () => {
+	const renderers = createPaperSearchRenderers("database");
+	const reranked = plain(renderers.renderResult(
+		result({
+			source: "openalex",
+			results: [{ title: "Paper", layaScore: 0.9 }],
+			layaStatus: { state: "reranked", message: "Laya reranked 1 paper locally; original ranks are retained." },
+		}),
+		collapsed,
+		theme,
+		context("openalex"),
+	).render(140));
+	assert.match(reranked, /Complete · OpenAlex · 1 result/);
+	assert.match(reranked, /Laya reranked 1 paper locally/u);
+
+	const fallback = plain(renderers.renderResult(
+		result({
+			source: "openalex",
+			results: [{ title: "Paper" }],
+			layaStatus: { state: "unavailable", message: "Laya was unavailable (HTTP 503); original order was retained." },
+		}),
+		collapsed,
+		theme,
+		context("openalex"),
+	).render(140));
+	assert.match(fallback, /Laya was unavailable.*original order was retained/u);
+});
+
 test("search rendering fits narrow widths and neutralizes control characters in summary fields", () => {
 	const renderers = createPaperSearchRenderers("database");
 	const data = result({ source: "日本語\nsource\x1b]evil\x07", results: [{}], note: "note\nnext\x00" });

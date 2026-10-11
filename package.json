@@ -1,6 +1,6 @@
 {
   "name": "@tquang122/hypatia",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Research-first CLI agent built on Pi and alphaXiv",
   "license": "MIT",
   "type": "module",

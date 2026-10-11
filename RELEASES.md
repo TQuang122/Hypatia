@@ -6,7 +6,13 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 
 ## Unreleased
 
-- **Provider and scholarly-source reliability**: Azure OpenAI settings using Pi's former provider ID migrate to `azure` on startup; conflicting old/new entries or duplicate model routes stop before any config is rewritten. PubMed metadata retains inline text and every author affiliation, OpenAlex missing-ID errors suggest the matching lookup, and rejected OAuth grants include recovery steps. Updated `pi-subagents` to 0.76.1 and `pi-web-access` to 0.38.0.
+## v0.1.1 - 2026-10-11
+
+- **Optional local Laya paper reranking**: opt into bounded, loopback-only relevance reranking for topical literature searches; exact lookups retain source order, and service failures preserve the original results. Laya remains off by default.
+- **Laya evaluation tooling**: compare against named retrieval baselines and generate deterministic Hypatia or SciFact development candidate pools. The three-query SciFact smoke regressed against BM25, so it does not support enabling reranking by default.
+- **Quick research command panel and searchable `/help`**: the welcome logo gives way to research commands after first interaction; `/help` filters grouped commands and prefills the composer without sending.
+- **Scrollable citation browser**: `/sources` presents citations from the latest answer in a bounded TUI panel with filtering, open, and copy controls; verification appears only when explicitly stated.
+- **Provider and scholarly-source reliability**: legacy Azure settings migrate safely to Pi's `azure` provider ID; PubMed preserves inline text and affiliations; OpenAlex lookup errors point to matching search tools; rejected OAuth grants include recovery guidance. Updated bundled `pi-subagents` and `pi-web-access` packages.
 
 ## v0.1.0 - 2026-10-10
 

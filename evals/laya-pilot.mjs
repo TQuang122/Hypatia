@@ -96,6 +96,8 @@ async function main() {
 		options: {
 			labels: { type: "string" },
 			"jev-rankings": { type: "string" },
+			"baseline-name": { type: "string" },
+			"baseline-rankings": { type: "string" },
 			"base-url": { type: "string", default: "http://127.0.0.1:8000" },
 			cutoffs: { type: "string", default: "5,10" },
 			"timeout-ms": { type: "string", default: "600000" },
@@ -103,7 +105,13 @@ async function main() {
 		},
 	});
 	if (!values.labels) {
-		throw new Error("Usage: node evals/laya-pilot.mjs --labels <jsonl-or-csv> [--jev-rankings <jsonl-or-csv>] [--base-url http://127.0.0.1:8000] [--output <new-json-file>]");
+		throw new Error("Usage: node evals/laya-pilot.mjs --labels <jsonl-or-csv> [--jev-rankings <jsonl-or-csv> | --baseline-name <name> [--baseline-rankings <jsonl-or-csv>]] [--base-url http://127.0.0.1:8000] [--output <new-json-file>]");
+	}
+	if (values["baseline-name"] !== undefined && values["baseline-name"].trim() === "") {
+		throw new Error("baseline-name must be a non-empty string.");
+	}
+	if (values["baseline-name"] !== undefined && values["jev-rankings"] !== undefined) {
+		throw new Error("--baseline-name cannot be combined with --jev-rankings.");
 	}
 	const baseUrl = localOrigin(values["base-url"] ?? "http://127.0.0.1:8000");
 	const cutoffs = parseCutoffs(values.cutoffs ?? "5,10");
@@ -111,7 +119,11 @@ async function main() {
 	if (!Number.isInteger(timeoutMs) || timeoutMs < 1) throw new Error("timeout-ms must be a positive integer.");
 	if (values.output && existsSync(resolve(values.output))) throw new Error("output file already exists; choose a new path.");
 
-	const input = loadCandidateRows(values.labels, values["jev-rankings"] ?? null);
+	const input = loadCandidateRows(values.labels, {
+		jevRankingsPath: values["jev-rankings"] ?? null,
+		baselineName: values["baseline-name"] ?? null,
+		baselineRankingsPath: values["baseline-rankings"] ?? null,
+	});
 	const apiKey = process.env.LAYA_API_KEY?.trim() ?? "";
 	const scored = [];
 	for (const candidate of input.rows) {
@@ -129,15 +141,15 @@ async function main() {
 		},
 		inputs: {
 			labels: input.label,
-			jevRankings: input.jev,
+			...(input.baseline ? { baseline: input.baseline } : { jevRankings: input.jev }),
 		},
 		cutoffs,
-		metrics: evaluateRankings(scored, cutoffs),
+		metrics: evaluateRankings(scored, cutoffs, input.baseline?.name ?? null),
 		candidateScores: scored.map((row) => ({
 			queryId: row.queryId,
 			candidateId: row.candidateId,
 			relevance: row.relevance,
-			jevRank: row.jevRank,
+			...(input.baseline ? { baselineRank: row.baselineRank } : { jevRank: row.jevRank }),
 			layaScore: row.layaScore,
 			layaChoice: row.layaChoice,
 			layaTruncated: row.layaTruncated,

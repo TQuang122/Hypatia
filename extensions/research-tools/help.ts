@@ -6,12 +6,13 @@ import {
 	livePackageCommandGroups,
 	readPromptSpecs,
 } from "../../metadata/commands.mjs";
+import { HelpPanel, type HelpPanelCommand } from "./help-panel.js";
 import { APP_ROOT } from "./shared.js";
 
-type HelpCommand = { usage: string; description: string };
+type HelpCommand = { usage: string; description: string; section: string };
 type HelpSection = { title: string; commands: HelpCommand[] };
 
-function buildHelpSections(pi: ExtensionAPI): HelpSection[] {
+export function buildHelpSections(pi: ExtensionAPI): HelpSection[] {
 	const liveCommands = new Map(pi.getCommands().map((command) => [command.name, command]));
 	const promptSpecs = readPromptSpecs(APP_ROOT);
 	const sections = new Map<string, HelpCommand[]>();
@@ -23,6 +24,7 @@ function buildHelpSections(pi: ExtensionAPI): HelpSection[] {
 		items.push({
 			usage: formatSlashUsage(command),
 			description: live.description ?? command.description,
+			section: command.section,
 		});
 		sections.set(command.section, items);
 	}
@@ -34,6 +36,7 @@ function buildHelpSections(pi: ExtensionAPI): HelpSection[] {
 		items.push({
 			usage: formatSlashUsage(command),
 			description: live.description ?? command.description,
+			section: command.section,
 		});
 		sections.set(command.section, items);
 	}
@@ -51,6 +54,7 @@ function buildHelpSections(pi: ExtensionAPI): HelpSection[] {
 			commands.push({
 				usage: spec.usage,
 				description: command.description ?? "",
+				section: group.title,
 			});
 		}
 
@@ -74,20 +78,20 @@ export function registerHelpCommand(pi: ExtensionAPI): void {
 	pi.registerCommand("help", {
 		description:
 			getExtensionCommandSpec("help")?.description ??
-			"Show grouped Hypatia commands and prefill the editor with a selected command.",
+			"Search grouped Hypatia commands and prefill the composer without sending.",
 		handler: async (_args, ctx) => {
+			if (ctx.mode !== "tui" || !ctx.hasUI || !ctx.ui.custom) {
+				ctx.ui.notify("/help's searchable command panel is available in the interactive TUI.", "info");
+				return;
+			}
 			const sections = buildHelpSections(pi);
-			const items = sections.flatMap((section) => [
-				`--- ${section.title} ---`,
-				...section.commands.map((cmd) => `${cmd.usage} — ${cmd.description}`),
-			]);
-
-			const selected = await ctx.ui.select("Hypatia Help", items);
-			if (!selected || selected.startsWith("---")) return;
-
-			const usage = selected.split(" — ")[0];
-			ctx.ui.setEditorText(usage);
-			ctx.ui.notify(`Prefilled ${usage}`, "info");
+			const commands: HelpPanelCommand[] = sections.flatMap((section) => section.commands.map((command) => ({
+				...command,
+				prefill: command.usage.split(/\s/u, 1)[0]! + (command.usage.includes(" ") ? " " : ""),
+			})));
+			await ctx.ui.custom<void>((tui, theme, _keys, done) => new HelpPanel(
+				tui, theme, commands, (command) => ctx.ui.setEditorText(command.prefill), done,
+			), { overlay: true, overlayOptions: { anchor: "bottom-center", width: "84%", maxHeight: "76%", offsetY: -4, margin: 1 } });
 		},
 	});
 }

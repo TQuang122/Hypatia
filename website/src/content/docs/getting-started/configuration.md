@@ -85,7 +85,7 @@ New installations bind **Enter** to send, **Shift+Enter** and **Ctrl+J** to inse
 
 Tips use English labels. Run `/reload` to apply the file and refresh the tip in chat. Shift+Enter depends on your terminal reporting modified Enter; Ctrl+J is the fallback.
 
-Hypatia defaults to Pi's fullscreen TUI: the transcript scrolls inside the terminal while the composer and status remain in view. The header keeps Hypatia, project, and session. The footer uses two rows:
+Hypatia defaults to Pi's fullscreen TUI: the transcript scrolls inside the terminal while the composer and status remain in view. The header keeps Hypatia, project, and session. A fixed row above the transcript follows the user prompt associated with the content at the top of the viewport; it hides while that prompt is visible there, uses a subtle theme-matched background, and has a muted divider on taller terminals. When scrolled up, Pi's single built-in `↓ Jump to latest message · Esc` control returns to the newest output. In fullscreen mode, `Esc` is assigned to this scroll action and takes precedence over Pi's normal interrupt shortcut; clicking preserves any draft. The pinned prompt keeps working after the turn settles. The footer uses two rows:
 
 - Model, thinking level, context usage, cumulative token usage, and recorded cost.
 - Observed activity and elapsed time, or research shortcuts when idle. Errors and waiting states take priority; narrow windows preserve the leading activity and elapsed time where space permits.
@@ -134,7 +134,7 @@ The [pi-web-access README](https://github.com/nicobailon/pi-web-access#readme) d
 
 The header keeps project and session identity; the first footer row keeps the active model, thinking level, context, and usage. Delegated role, model, current tool, and progress appear in the activity row while subagents are active.
 
-The bundled subagents (`evidence-scout`, `scribe`, `auditor`, `critic`, `reviser`) inherit the main research model unless you configure a route. Use `/model-routes` in chat or `hypatia model routes` in a shell to choose a primary model and ordered launch fallbacks. The picker labels whether a role uses an explicit route, a Pi role override, or the parent model. **Use Pi override** clears the explicit route and keeps `subagents.agentOverrides.<name>.model`; **Inherit parent model** clears both model overrides so the role follows the chat model while preserving other Pi role settings. For a native Pi single-model override, set `subagents.agentOverrides.<name>.model` in `~/.hypatia/agent/settings.json`. `/subagents` is a separate agent-inspection and selection menu, not the model-route editor. Hypatia sets `subagents.agentExcludeDirs` to `["~/.agents"]` so agent files there cannot replace the bundled agents, and `subagents.defaultSubagentOnlyExtensions` to its research tools and pi-web-access so every subagent can search, including foreground runs. It rewrites that list on each launch unless you replace it with your own.
+The bundled subagents (`evidence-scout`, `scribe`, `auditor`, `critic`, `reviser`) inherit the main research model unless you configure a route. Use `/model-routes` in chat or `hypatia model routes` in a shell to choose a primary model, ordered launch fallbacks, and each role's thinking level. The thinking picker can set `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`, or clear the override to use the agent/Pi default. It saves to `subagents.agentOverrides.<name>.thinking` in `~/.hypatia/agent/settings.json`. The model picker labels whether a role uses an explicit route, a Pi role override, or the parent model. **Use Pi override** clears the explicit route and keeps `subagents.agentOverrides.<name>.model`; **Inherit parent model** clears both model overrides while preserving thinking and other Pi role settings. `/subagents` remains the agent-inspection and selection menu. Hypatia sets `subagents.agentExcludeDirs` to `["~/.agents"]` so agent files there cannot replace the bundled agents, and `subagents.defaultSubagentOnlyExtensions` to its research tools and pi-web-access so every subagent can search, including foreground runs. It rewrites that list on each launch unless you replace it with your own.
 
 For ordered per-role preferences and fallback candidates, create `~/.hypatia/agent/model-routes.json`:
 
@@ -151,7 +151,7 @@ For ordered per-role preferences and fallback candidates, create `~/.hypatia/age
 }
 ```
 
-You can configure the same file from the chat TUI with `/model-routes` or from a shell with `hypatia model routes`. Choose a role, select its primary model, then add fallback models in their exact order. The picker lists authenticated non-premium models. On a headless machine, use `hypatia model routes --json` to inspect the effective routes.
+You can configure model routes and role thinking from the chat TUI with `/model-routes` or from a shell with `hypatia model routes`. Choose a role, select its primary model, then add fallback models in their exact order. The picker lists authenticated non-premium models. On a headless machine, use `hypatia model routes --json` to inspect the effective model routes.
 
 Existing v1 route keys and `subagents.agentOverrides` keys migrate to the canonical names at startup; when both old and new keys set the same field, the canonical value wins. The former `writer`, `verifier`, and `patcher` selectors remain aliases. Use `evidence-scout` and `critic` instead of `researcher` and `reviewer`, which Pi reserves for built-in agents.
 
@@ -208,15 +208,16 @@ Hypatia reads these environment variables. `HYPATIA_MODEL`, `HYPATIA_THINKING`, 
 | `HYPATIA_TOOL_BUDGET` | Max top-level tool calls per session; unset means unlimited |
 | `HYPATIA_AUTORESEARCH_ROOT` | Local AutoResearch repository root for validating exported idea provenance |
 | `HYPATIA_CONTEXT7` | Set to `1` to register the Context7 MCP server (versioned library docs, fetched via npx) |
-| `HYPATIA_LAYA_ENABLED` | Set to `1` to enable optional local Laya reranking for topical paper searches (off by default) |
+| `HYPATIA_LAYA_ENABLED` | Set to `1` to enable the explicit local Laya advisory tool (off by default) |
 | `HYPATIA_LAYA_URL` | Loopback HTTP origin for `laya-serve`; defaults to `http://127.0.0.1:8000` and rejects non-loopback hosts |
+| `HYPATIA_LAYA_MODEL` | Checkpoint name or registered model alias; defaults to `english` |
 | `HYPATIA_LAYA_TIMEOUT_MS` | Per-candidate Laya request timeout in milliseconds; defaults to `2000` |
 | `HYPATIA_LAYA_CONCURRENCY` | Maximum concurrent candidate scores; defaults to `4` and is capped at `8` |
 | `LAYA_API_KEY` | Optional bearer key shared with the local Laya service |
 | `CORE_API_KEY` | Free CORE key ([create one](https://core.ac.uk/services/api)); without one, CORE results are metadata-only with no full text |
 | `UNPAYWALL_EMAIL` | Your email, required for the Unpaywall step of OA recovery (`NCBI_EMAIL` works as a fallback) |
 
-## Optional local Laya reranking
+## Optional local Laya advisory
 
 Laya is disabled by default and runs as a separate service. To install it in an isolated Python environment and bind it to loopback:
 
@@ -232,9 +233,22 @@ LAYA_DEFAULT_MODEL=english \
 ~/.hypatia/laya-py313/bin/laya-serve
 ```
 
-Then set `HYPATIA_LAYA_ENABLED=1` in the environment or `.env` file used to launch Hypatia. The optional URL must be an HTTP loopback origin (`127.0.0.1` or `[::1]`); Hypatia never sends candidate text to a remote Laya endpoint. If `LAYA_API_KEY` is set for the service, set the same value for Hypatia. Hypatia checks service liveness before scoring and checks the loaded English checkpoint revision afterward, so lazy loading is supported; preloading is recommended to avoid a cold first request timing out.
+Then set `HYPATIA_LAYA_ENABLED=1` in the environment or `.env` file used to launch Hypatia. The optional URL must be an HTTP loopback origin (`127.0.0.1` or `[::1]`); Hypatia never sends candidate text to a remote Laya endpoint. If `LAYA_API_KEY` is set for the service, set the same value for Hypatia. The science-database search never calls Laya or changes source order. Ask Hypatia to call `hypatia_laya_advisory` after a topical search to get scores and a separate suggested order. It checks liveness before scoring and requires a healthy final status and the configured checkpoint revision before returning advice. Lazy loading is supported; preloading is recommended to avoid a cold first request timing out.
 
-Only topical discovery searches through Semantic Scholar, OpenAlex, PubMed, Europe PMC, and CORE are eligible. Exact DOI/PMID and author/citation lookups, arXiv ID lookup, and full-text retrieval are not reranked. Laya reorders the returned candidate set without removing entries and preserves each source rank. Health, timeout, HTTP, or response failures leave the original order intact and show a visible status in the result. For ranking evidence and the default-on acceptance gate, use a held-out labeled query set; enabling the option does not change the default behavior.
+The selected model defaults to `english`. To serve a fine-tuned checkpoint under a local alias with the pinned Laya 0.4.1 environment, use the repository wrapper around Laya's supported `Router(models=...)` and `create_app(router)` APIs:
+
+```bash
+~/.hypatia/laya-py313/bin/python evals/serve_hypatia_laya.py \
+  --checkpoint /absolute/path/to/checkpoint \
+  --model-name hypatia_relevance \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --device cpu
+```
+
+The wrapper re-points the built-in `english` name to the local checkpoint, so leave `HYPATIA_LAYA_MODEL=english`. It preloads the checkpoint before binding, avoiding a first-call model load on the advisory's per-candidate timeout.
+
+Only topical result sets from Semantic Scholar, OpenAlex, PubMed, Europe PMC, and CORE are eligible. Exact identifiers, author/citation/reference lookups, arXiv ID lookup, and full-text retrieval are rejected by operation mode. The advisory retains every candidate and reports each original rank alongside a separate suggested order. Health, timeout, HTTP, truncation, or response-validation problems never alter the primary result order and show a visible status. Automatic reordering is not enabled; consider it only after the held-out quality and latency gate passes.
 
 ## Telemetry
 

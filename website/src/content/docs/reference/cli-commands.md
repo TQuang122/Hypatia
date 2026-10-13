@@ -11,10 +11,11 @@ This page covers the Hypatia CLI commands and flags. `hypatia help` prints the s
 
 | Command | Description |
 | --- | --- |
-| `hypatia` | Launch the interactive REPL |
+| `hypatia` | Launch the interactive REPL with a collapsible subagent activity panel (`Ctrl+Shift+A`) |
+| `hpt` | Short alias for `hypatia` |
 | `hypatia chat [prompt]` | Start chat explicitly, optionally with an initial prompt |
 | `hypatia help` | Show CLI help |
-| `hypatia setup` | Run the guided setup wizard |
+| `hypatia setup` | Run the guided setup wizard; canceling model access stops before optional setup |
 | `hypatia setup preview` | Install or verify pandoc |
 | `hypatia doctor` | Diagnose config, auth, Pi runtime, and preview dependencies |
 | `hypatia status` | Show the current setup summary (model, auth, alphaXiv, web access, service tier, telemetry) |
@@ -24,15 +25,17 @@ This page covers the Hypatia CLI commands and flags. `hypatia help` prints the s
 | Command | Description |
 | --- | --- |
 | `hypatia model list` | List available models in Pi auth storage |
-| `hypatia model login [id]` | Authenticate a model provider with OAuth or API-key setup; legacy Azure provider settings migrate on startup |
+| `hypatia model login [id]` | Authenticate with OAuth or an API key; invalid grants and missing authorization-code callbacks include retry guidance. When choosing a default, GitHub Copilot prefers Claude Opus, then Sonnet, then GPT; legacy Azure provider settings migrate on startup |
 | `hypatia model logout [id]` | Clear stored auth for a model provider |
 | `hypatia model set [provider/model]` | Set the default approved research model for all sessions; without one, pick from a list |
-| `hypatia model routes [--json]` | Configure ordered primary/fallback models per subagent role, or inspect the effective routes as JSON |
+| `hypatia model routes [--json]` | Configure ordered primary/fallback models and thinking per subagent role, or inspect effective model routes as JSON |
 | `hypatia model tier [value]` | View or set the request service tier override |
 
 The `model set` command updates `~/.hypatia/agent/settings.json` with the new default. It accepts either `provider/model-name` or `provider:model-name`; run `hypatia model list` first and choose a model ID from that output, or run `hypatia model set` alone to pick from the available models. When a model is not usable, the error says why: no credentials for its provider, a local provider in `models.json` without an `apiKey` placeholder, or close matches for an unknown ID. `hypatia model help` lists these commands. `hypatia model login <id>` goes straight to API-key setup for API-key providers such as `google`, `azure`, `amazon-bedrock`, and `openrouter`. For OAuth logins in SSH or other headless sessions, paste the final redirect URL into Hypatia when the browser runs on another machine.
 
-`hypatia model routes` opens an interactive editor in the shell; `/model-routes` opens the editor in the chat TUI. Each role can use up to eight authenticated non-premium model IDs, in order. The picker distinguishes **Use Pi override** (remove the explicit route, keep the single-model Pi override) from **Inherit parent model** (remove both model overrides and preserve other role settings). The chat header is two lines, and active subagent/model/tool progress appears in the footer until delegation ends. `hypatia model routes --json` prints the resolved route sources without prompting.
+Failed model requests also include recovery suggestions for model access, credits, quota, context limits, credentials, or provider outages.
+
+`hypatia model routes` opens an interactive editor in the shell; `/model-routes` opens the editor in the chat TUI. Each role can use up to eight authenticated non-premium model IDs, in order, and a thinking level from `off` through `max` or its agent/Pi default. The picker distinguishes **Use Pi override** (remove the explicit route, keep the single-model Pi override) from **Inherit parent model** (remove both model overrides and preserve thinking and other role settings). The chat header is two lines, and active subagent/model/tool progress appears in the footer until delegation ends. `hypatia model routes --json` prints the resolved model route sources without prompting.
 
 ## AlphaXiv commands
 

@@ -2,6 +2,8 @@
 node_modules
 .wrangler/
 .env
+__pycache__/
+*.py[cod]
 .hypatia/git
 .hypatia/sessions
 .hypatia/cache

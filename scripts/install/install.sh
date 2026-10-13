@@ -259,10 +259,49 @@ checksums_url="$(printf '%s\n' "$release_metadata" | sed -n '5p')"
 step "Installing Hypatia ${resolved_version} for ${asset_target}"
 
 tmp_dir="$(mktemp -d)"
+install_transaction_active=0
+bundle_install_attempted=0
+hypatia_shim_install_attempted=0
+hpt_shim_install_attempted=0
+bundle_dir=""
+backup_dir=""
+hypatia_shim_backup=""
+hpt_shim_backup=""
 cleanup() {
+	cleanup_status=$?
+	trap - EXIT
+	if [ "$install_transaction_active" -eq 1 ]; then
+		set +e
+		rollback_failed=0
+		if [ "$hpt_shim_install_attempted" -eq 1 ]; then
+			rm -f "$INSTALL_BIN_DIR/hpt" || rollback_failed=1
+		fi
+		if [ -e "$hpt_shim_backup" ] || [ -L "$hpt_shim_backup" ]; then
+			mv "$hpt_shim_backup" "$INSTALL_BIN_DIR/hpt" || rollback_failed=1
+		fi
+		if [ "$hypatia_shim_install_attempted" -eq 1 ]; then
+			rm -f "$INSTALL_BIN_DIR/hypatia" || rollback_failed=1
+		fi
+		if [ -e "$hypatia_shim_backup" ] || [ -L "$hypatia_shim_backup" ]; then
+			mv "$hypatia_shim_backup" "$INSTALL_BIN_DIR/hypatia" || rollback_failed=1
+		fi
+		if [ "$bundle_install_attempted" -eq 1 ]; then
+			rm -rf "$bundle_dir" || rollback_failed=1
+		fi
+		if [ -e "$backup_dir" ] || [ -L "$backup_dir" ]; then
+			mv "$backup_dir" "$bundle_dir" || rollback_failed=1
+		fi
+		set -e
+		if [ "$rollback_failed" -ne 0 ]; then
+			printf 'Hypatia installer rollback was incomplete; backups remain at %s.\n' "$tmp_dir" >&2
+			exit "$cleanup_status"
+		fi
+	fi
   rm -rf "$tmp_dir"
+	exit "$cleanup_status"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 
 archive_path="$tmp_dir/$archive_name"
 step "Downloading ${archive_name}"
@@ -329,43 +368,94 @@ HYPATIA_TELEMETRY=off "$candidate_bundle/hypatia" --help >/dev/null
 
 mkdir -p "$INSTALL_APP_DIR"
 mkdir -p "$INSTALL_BIN_DIR"
-bundle_dir="$INSTALL_APP_DIR/$bundle_name"
-backup_dir="$tmp_dir/previous-bundle"
-had_previous=0
-if [ -e "$bundle_dir" ]; then
-  mv "$bundle_dir" "$backup_dir"
-  had_previous=1
+hypatia_shim_path="$INSTALL_BIN_DIR/hypatia"
+hpt_shim_path="$INSTALL_BIN_DIR/hpt"
+
+is_hypatia_installer_shim() {
+	shim_path="$1"
+	[ -f "$shim_path" ] && [ ! -L "$shim_path" ] || return 1
+	if grep -Fqx '# Managed by Hypatia standalone installer.' "$shim_path"; then
+		return 0
+	fi
+	grep -Fq "exec \"$INSTALL_APP_DIR/hypatia-" "$shim_path" \
+		&& grep -Fq '/hypatia" "$@"' "$shim_path"
+}
+
+if [ -e "$hpt_shim_path" ] || [ -L "$hpt_shim_path" ]; then
+	if ! is_hypatia_installer_shim "$hpt_shim_path"; then
+		printf 'An existing hpt command at %s is not a Hypatia launcher; leaving it untouched.\n' "$hpt_shim_path" >&2
+		exit 1
+	fi
 fi
-if ! mv "$candidate_bundle" "$bundle_dir"; then
-  if [ "$had_previous" -eq 1 ]; then
-    mv "$backup_dir" "$bundle_dir"
-  fi
-  echo "Failed to install the validated Hypatia bundle." >&2
-  exit 1
+if [ -d "$hypatia_shim_path" ] && [ ! -L "$hypatia_shim_path" ]; then
+	printf 'Cannot install the Hypatia launcher over a directory: %s\n' "$hypatia_shim_path" >&2
+	exit 1
 fi
 
-step "Linking hypatia into $INSTALL_BIN_DIR"
-shim_candidate="$tmp_dir/hypatia-shim"
-if ! cat >"$shim_candidate" <<EOF
+step "Preparing hypatia and hpt launchers in $INSTALL_BIN_DIR"
+for command_name in hypatia hpt; do
+	shim_candidate="$tmp_dir/$command_name-shim-candidate"
+	if ! cat >"$shim_candidate" <<EOF
 #!/bin/sh
 set -eu
+# Managed by Hypatia standalone installer.
 exec "$INSTALL_APP_DIR/$bundle_name/hypatia" "\$@"
 EOF
-then
-  rm -rf "$bundle_dir"
-  if [ "$had_previous" -eq 1 ]; then
-    mv "$backup_dir" "$bundle_dir"
+	then
+		printf 'Failed to prepare the %s launcher.\n' "$command_name" >&2
+		exit 1
   fi
-  exit 1
-fi
-chmod 0755 "$shim_candidate"
-if ! mv "$shim_candidate" "$INSTALL_BIN_DIR/hypatia"; then
-  rm -rf "$bundle_dir"
-  if [ "$had_previous" -eq 1 ]; then
-    mv "$backup_dir" "$bundle_dir"
+	if ! chmod 0755 "$shim_candidate"; then
+		printf 'Failed to make the %s launcher executable.\n' "$command_name" >&2
+		exit 1
   fi
-  exit 1
+done
+hypatia_shim_candidate="$tmp_dir/hypatia-shim-candidate"
+hpt_shim_candidate="$tmp_dir/hpt-shim-candidate"
+
+bundle_dir="$INSTALL_APP_DIR/$bundle_name"
+backup_dir="$tmp_dir/previous-bundle"
+hypatia_shim_backup="$tmp_dir/previous-hypatia-shim"
+hpt_shim_backup="$tmp_dir/previous-hpt-shim"
+install_transaction_active=1
+
+if [ -e "$bundle_dir" ] || [ -L "$bundle_dir" ]; then
+	if ! mv "$bundle_dir" "$backup_dir"; then
+		printf 'Failed to preserve the existing Hypatia bundle.\n' >&2
+		exit 1
+	fi
 fi
+bundle_install_attempted=1
+if ! mv "$candidate_bundle" "$bundle_dir"; then
+	printf 'Failed to install the validated Hypatia bundle.\n' >&2
+	exit 1
+fi
+
+if [ -e "$hypatia_shim_path" ] || [ -L "$hypatia_shim_path" ]; then
+	if ! mv "$hypatia_shim_path" "$hypatia_shim_backup"; then
+		printf 'Failed to preserve the existing hypatia launcher.\n' >&2
+		exit 1
+	fi
+fi
+if [ -e "$hpt_shim_path" ] || [ -L "$hpt_shim_path" ]; then
+	if ! mv "$hpt_shim_path" "$hpt_shim_backup"; then
+		printf 'Failed to preserve the existing hpt launcher.\n' >&2
+		exit 1
+	fi
+fi
+
+step "Linking hypatia and hpt into $INSTALL_BIN_DIR"
+hypatia_shim_install_attempted=1
+if ! mv "$hypatia_shim_candidate" "$hypatia_shim_path"; then
+	printf 'Failed to install the hypatia launcher.\n' >&2
+	exit 1
+fi
+hpt_shim_install_attempted=1
+if ! mv "$hpt_shim_candidate" "$hpt_shim_path"; then
+	printf 'Failed to install the hpt launcher.\n' >&2
+	exit 1
+fi
+install_transaction_active=0
 rm -rf "$backup_dir"
 
 for old_bundle in "$INSTALL_APP_DIR"/hypatia-*; do

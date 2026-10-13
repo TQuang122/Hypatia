@@ -35,6 +35,7 @@ export function readPromptSpecs(appRoot) {
 }
 
 export const extensionCommandSpecs = [
+	{ name: "compact", args: "[instructions]", section: "Project & Session", description: "Compact older session context while retaining observed citations, verification states, artifact paths and next steps.", publicDocs: true },
 	{ name: "idea", args: "[research goal]", section: "Project & Session", description: "Choose a one-model or three-model panel above the input; approving the readable, budget-checked contract starts Idea Forge. Defaults: 12 calls, 900s, 5000 tokens/request, 90s/request. Use research-ideation for broad chat-only brainstorming.", publicDocs: true },
 	{ name: "experiments", args: "[tree create|list|status <slug>|approve <tree> <node>|fork <tree> <parent> <child> <hypothesis>|promote <tree> <node>|pause|resume|recover|close-node <tree> <node>|close|export <tree>|acknowledge <tree> <node>|generate <goal>|ideas|forge-status|forge-pause|forge-resume|forge-recover|forge-approve <slug>|status|pause|resume|approve|export|close|recover|review <slug>|create <goal>|create-json <contract-file>|import <idea-file>|import-json <idea-file> --contract <contract-file>]", section: "Project & Session", description: "Prepare experiments or native research ideas in chat with /idea, then approve a frozen contract; manage receipts, shared-budget Git worktree trees and recovery.", publicDocs: true },
 	{ name: "help", args: "", section: "Project & Session", description: "Search grouped Hypatia commands and prefill the composer without sending.", publicDocs: true },
@@ -42,9 +43,10 @@ export const extensionCommandSpecs = [
 	{ name: "outputs", args: "", section: "Project & Session", description: "View grouped research reports and provenance in the TUI, search their text, or copy artifact paths.", publicDocs: true },
 	{ name: "sources", args: "", section: "Project & Session", description: "Browse citations from the latest assistant answer; open or copy a source URL.", publicDocs: true },
 	{ name: "compare-provenance", args: "", section: "Project & Session", description: "Compare verification and source-coverage metadata from two completed research runs.", publicDocs: true },
-	{ name: "model-routes", args: "", section: "Agents & Delegation", description: "Configure ordered routes for evidence-scout, scribe, auditor, critic, and reviser; choose Pi-override or parent-model inheritance.", publicDocs: true },
+	{ name: "model-routes", args: "", section: "Agents & Delegation", description: "Configure ordered model routes and per-role thinking for evidence-scout, scribe, auditor, critic, and reviser.", publicDocs: true },
 	{ name: "service-tier", args: "", section: "Project & Session", description: "View or set the provider service tier override for supported models.", publicDocs: true },
-	{ name: "tools", args: "", section: "Project & Session", description: "Browse public research tools, including science search with optional local Laya reranking, with their source and parameter summary.", publicDocs: true },
+	{ name: "tools", args: "", section: "Project & Session", description: "Browse public research tools, including science search and the explicit local Laya advisory tool, with source and parameter summaries.", publicDocs: true },
+	{ name: "tree", args: "", section: "Project & Session", description: "Navigate session branches; optional branch summaries preserve research hypotheses, citations, verification states and next steps.", publicDocs: true },
 ];
 
 export const livePackageCommandGroups = [
@@ -105,12 +107,13 @@ export const cliCommandSections = [
 	{
 		title: "Core",
 		commands: [
-			{ usage: "hypatia", description: "Launch Graphite chat with a centered logo, citation-aware Markdown, grouped activity, contextual tips, and an F2 inbox for warnings." },
+			{ usage: "hypatia", description: "Launch Graphite research chat with citation-aware Markdown, live research workflow progress, a collapsible active-agent panel (Ctrl+Shift+A), contextual tips, and an F2 warning inbox." },
+			{ usage: "hpt", description: "Short alias for `hypatia`." },
 			{ usage: "hypatia chat [prompt]", description: "Start chat explicitly, optionally with an initial prompt." },
 			{ usage: 'hypatia -- "- prompt"', description: "Start with a dash-leading research prompt after the end-of-options delimiter." },
 			{ usage: 'hypatia --prompt="- prompt"', description: "Run a dash-leading research prompt once and exit." },
 			{ usage: "hypatia help", description: "Show CLI help." },
-			{ usage: "hypatia setup", description: "Run the guided setup wizard." },
+			{ usage: "hypatia setup", description: "Run the guided setup wizard; canceling model access stops before optional packages, alphaXiv, and preview setup." },
 			{ usage: "hypatia setup preview", description: "Install or verify preview dependencies." },
 			{ usage: "hypatia doctor", description: "Diagnose config, auth, Pi runtime, and preview dependencies." },
 			{ usage: "hypatia status", description: "Show the current setup summary." },
@@ -120,10 +123,10 @@ export const cliCommandSections = [
 		title: "Model Management",
 		commands: [
 			{ usage: "hypatia model list", description: "List available models in Pi auth storage." },
-			{ usage: "hypatia model login [id]", description: "Authenticate a model provider with OAuth or API-key setup; legacy Azure settings migrate to `azure` on startup." },
+			{ usage: "hypatia model login [id]", description: "Authenticate with OAuth or an API key; invalid grants and missing authorization-code callbacks include retry guidance. When choosing a default, GitHub Copilot prefers Claude Opus, then Sonnet, then GPT. Legacy Azure settings migrate to `azure` on startup." },
 			{ usage: "hypatia model logout [id]", description: "Clear stored auth for a model provider." },
 			{ usage: "hypatia model set [provider/model]", description: "Set the default approved research model (also accepts provider:model); without one, pick from a list." },
-			{ usage: "hypatia model routes [--json]", description: "Configure ordered routes for evidence-scout, scribe, auditor, critic, and reviser; choose Pi-override or parent-model inheritance, or inspect resolved routes as JSON." },
+			{ usage: "hypatia model routes [--json]", description: "Configure ordered model routes and per-role thinking for evidence-scout, scribe, auditor, critic, and reviser, or inspect resolved model routes as JSON." },
 			{ usage: "hypatia model tier [value]", description: "View or set the request service tier override." },
 		],
 	},

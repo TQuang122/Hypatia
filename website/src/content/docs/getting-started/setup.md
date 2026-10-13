@@ -7,6 +7,8 @@ order: 3
 
 `hypatia setup` connects a model provider, offers optional packages, signs you in to alphaXiv, and offers to install pandoc for preview. It runs automatically when you launch `hypatia` interactively without a usable default model, and you can rerun it at any time.
 
+If you cancel at the model-access prompt, setup stops there and skips optional packages, alphaXiv sign-in, and preview installation. Configure a model later with `hypatia model login`, then rerun setup.
+
 ```bash
 hypatia setup
 ```
@@ -22,13 +24,13 @@ Choose how to configure model access:
   Cancel
 ```
 
-OAuth opens a browser to sign in. On a remote or headless machine where the browser callback cannot reach Hypatia, paste the final redirect URL or authorization code into the prompt. The API-key flow lists hosted providers plus LM Studio, LiteLLM, custom OpenAI-compatible servers, and Amazon Bedrock. You can paste a key, or leave it empty and set the provider's environment variable (for example `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`) instead.
+OAuth opens a browser to sign in. On a remote or headless machine where the browser callback cannot reach Hypatia, paste the final redirect URL or authorization code into the prompt. If the browser returns without a code, sign out of the provider's site or use a private window, then retry `hypatia model login <provider>`. For ChatGPT sign-in, you can also use `hypatia model login openai-codex`. The API-key flow lists hosted providers plus LM Studio, LiteLLM, custom OpenAI-compatible servers, and Amazon Bedrock. You can paste a key, or leave it empty and set the provider's environment variable (for example `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`) instead.
 
 Credentials are stored in `~/.hypatia/agent/auth.json` with user-only file permissions. Setting the key in your shell or `.env` keeps it off disk.
 
 For Azure OpenAI, use `hypatia model login azure`, set `AZURE_OPENAI_API_KEY`, and provide either `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. On startup, Hypatia migrates legacy `azure-openai-responses` provider entries in `auth.json`, `models.json`, `settings.json`, and `model-routes.json` to `azure`. If old and new entries conflict or a route would become duplicated, startup stops before changing those files so you can merge them safely.
 
-Once a provider is connected, setup picks the recommended research model from what you are signed in to, such as `openai/gpt-5.6-terra` or `anthropic/claude-opus-5-5`. If you already have a valid default, setup keeps it. To change it later:
+Once a provider is connected, setup picks the recommended research model from what you are signed in to, such as `openai/gpt-5.6-terra` or `anthropic/claude-opus-5-5`. With GitHub Copilot, it prefers the newest available Claude Opus model, then Sonnet, then GPT. If you already have a valid default, setup keeps it. To change it later:
 
 ```bash
 hypatia model list
@@ -36,6 +38,8 @@ hypatia model set <provider/model>
 ```
 
 `model set` also accepts `provider:model`. Run `hypatia model set` with no model to pick from a list. Pro-class model IDs are rejected.
+
+When a model request fails, Hypatia adds a likely cause and next step for unsupported models, empty credits, rate limits or quota, context limits, rejected credentials, and temporary outages. The guidance is inferred from the provider error; check the provider's account and service status when needed.
 
 ### Amazon Bedrock
 

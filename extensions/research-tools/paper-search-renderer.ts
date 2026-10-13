@@ -3,7 +3,7 @@ import { Text, truncateToWidth, visibleWidth, type Component } from "@earendil-w
 
 import { formatToolDuration } from "./render-utils.js";
 
-type SearchKind = "alpha" | "database";
+type SearchKind = "alpha" | "database" | "laya";
 type PaperPreview = { title: string; year?: string; identifier?: string };
 type SummaryRow = { color: ThemeColor; text: string; preview?: PaperPreview };
 type ToolRenderContext = Parameters<NonNullable<ToolDefinition["renderResult"]>>[3];
@@ -193,7 +193,8 @@ export function createPaperSearchRenderers(kind: SearchKind) {
 		renderCall(args: Record<string, unknown>, theme: Theme, context: ToolRenderContext): Component {
 			const source = sourceLabel(kind === "alpha" ? "alphaxiv" : args.source) || "database";
 			const query = singleLine(args.query);
-			return summary([{ color: "toolTitle", text: `Search · ${source}${query ? ` · ${query}` : ""}` }], theme, context);
+			const title = kind === "laya" ? "Laya advisory" : "Search";
+			return summary([{ color: "toolTitle", text: `${title} · ${source}${query ? ` · ${query}` : ""}` }], theme, context);
 		},
 		renderResult(result: AgentToolResult<unknown>, options: ToolRenderResultOptions, theme: Theme, context: ToolRenderContext): Component {
 			if (options.expanded) {
@@ -227,7 +228,7 @@ export function createPaperSearchRenderers(kind: SearchKind) {
 				const color: ThemeColor = options.isPartial || fallback || note ? "warning" : "success";
 				rows.push({ color, text: `${state} · ${source} · ${count ?? (options.isPartial ? "awaiting results" : "results available")}${options.isPartial && count ? " so far" : ""}${durationSuffix}` });
 				if (fallback || note) rows.push({ color: "warning", text: fallback || note });
-				if (layaMessage) rows.push({ color: layaStatus.state === "reranked" ? "dim" : "warning", text: layaMessage });
+				if (layaMessage) rows.push({ color: layaStatus.state === "advisory" || layaStatus.state === "reranked" ? "dim" : "warning", text: layaMessage });
 				for (const preview of previews) rows.push({ color: "text", text: "", preview });
 				if (previews.length) rows.push({ color: "dim", text: "Ctrl+O for full result details" });
 			}

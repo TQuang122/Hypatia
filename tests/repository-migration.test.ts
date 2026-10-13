@@ -11,6 +11,7 @@ test("npm uses the Companion package and repository", () => {
 	assert.equal(manifest.name, "@tquang122/hypatia");
 	assert.equal(manifest.publishConfig.access, "public");
 	assert.equal(manifest.bin.hypatia, "bin/hypatia.js");
+	assert.equal(manifest.bin.hpt, manifest.bin.hypatia);
 	assert.ok(manifest.dependencies["@companion-ai/alpha-hub"]);
 	assert.equal(lock.name, manifest.name);
 	assert.equal(lock.packages[""].name, manifest.name);

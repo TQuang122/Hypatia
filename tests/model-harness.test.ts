@@ -15,7 +15,7 @@ import {
 	shouldRunInteractiveSetup,
 } from "../src/cli.js";
 import { buildModelStatusSnapshotFromRecords, choosePreferredModelRecord, chooseRecommendedModel, getAvailableModelRecords, isProClassModelSpec } from "../src/model/catalog.js";
-import { isLocalModelProvider, resolveModelProviderForCommand, setDefaultModelSpec } from "../src/model/commands.js";
+import { isLocalModelProvider, resolveModelProviderForCommand, runModelSetup, setDefaultModelSpec } from "../src/model/commands.js";
 import { createModelRegistry } from "../src/model/registry.js";
 import { canonicalizeModelSpec, parseModelSpec } from "../src/pi/settings.js";
 
@@ -90,6 +90,35 @@ test("choosePreferredModelRecord picks newest Opus and the standard GPT tier, ne
 	assert.equal(pick(["anthropic/claude-fable-5-1"]), undefined);
 });
 
+test("choosePreferredModelRecord ranks GitHub Copilot Claude models for research and parses dotted versions", () => {
+	const pick = (specs: string[]) => {
+		const chosen = choosePreferredModelRecord(specs.map((spec) => {
+			const [provider, id] = spec.split("/") as [string, string];
+			return { provider, id };
+		}));
+		return chosen && `${chosen.provider}/${chosen.id}`;
+	};
+
+	assert.equal(
+		pick([
+			"github-copilot/claude-haiku-5.5",
+			"github-copilot/claude-opus-5.3",
+			"github-copilot/claude-opus-5.5",
+			"github-copilot/claude-sonnet-5.5",
+			"github-copilot/gpt-5.1",
+		]),
+		"github-copilot/claude-opus-5.5",
+	);
+	assert.equal(
+		pick(["github-copilot/claude-haiku-5.5", "github-copilot/claude-sonnet-5.3", "github-copilot/claude-sonnet-5.5", "github-copilot/gpt-5.1"]),
+		"github-copilot/claude-sonnet-5.5",
+	);
+	assert.equal(
+		pick(["github-copilot/gpt-4.1", "github-copilot/gpt-5.1"]),
+		"github-copilot/gpt-5.1",
+	);
+});
+
 test("chooseRecommendedModel prefers the strongest authenticated research model", async () => {
 	const authPath = createAuthPath({
 		openai: { type: "api_key", key: "openai-test-key" },
@@ -99,6 +128,16 @@ test("chooseRecommendedModel prefers the strongest authenticated research model"
 	const recommendation = await chooseRecommendedModel(authPath);
 
 	assert.equal(recommendation?.spec, "anthropic/claude-opus-5-5");
+});
+
+test("runModelSetup reports when the user cancels before configuring model access", async () => {
+	await withoutModelEnv(async () => {
+		const authPath = createAuthPath({});
+		const settingsPath = join(dirname(authPath), "settings.json");
+		writeFileSync(settingsPath, "{}\n", "utf8");
+		const configured = await runModelSetup(settingsPath, authPath, async () => 2);
+		assert.equal(configured, false);
+	});
 });
 
 test("chooseRecommendedModel prefers the newest OpenAI GPT exposed by Pi", async () => {

@@ -4,6 +4,7 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { Container, Key, matchesKey, Text, truncateToWidth, type Component, type Focusable, type TUI, type TuiMouseEvent, type TuiMouseEventResult } from "@earendil-works/pi-tui";
 import { DefaultPackageManager, getAgentDir, loadSkills, SettingsManager, type ExtensionAPI, type ExtensionContext, type ExtensionUIContext, type Theme } from "@earendil-works/pi-coding-agent";
 import { scrubSecretsText } from "./secret-scrubber.js";
+import { registerModelErrorGuidance } from "./model-error-guidance.js";
 
 export const WARNING_STATUS_KEY = "hypatia-warnings";
 const UI_BRIDGE_KEY = "__hypatiaWarningNotifyBridge";
@@ -122,6 +123,7 @@ class WarningDetail implements Component, Focusable {
 }
 
 export function registerWarningCenter(pi: ExtensionAPI): void {
+	registerModelErrorGuidance(pi);
 	let context: ExtensionContext | undefined;
 	let warnings: WarningRecord[] = [];
 	let overflowCount = 0;

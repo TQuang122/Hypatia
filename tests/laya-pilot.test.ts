@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-import { pairedQueryBootstrap } from "../evals/laya-pilot-metrics.mjs";
+import { evaluateRankings, pairedQueryBootstrap, summarizeLatencyTrials } from "../evals/laya-pilot-metrics.mjs";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -40,6 +40,78 @@ test("paired query bootstrap is deterministic and estimates Laya minus baseline 
 	assert.equal(first.confidenceLevel, 0.95);
 });
 
+test("warm latency summary uses nearest-rank p95 and counts failed or truncated candidates", () => {
+	const trials = Array.from({ length: 20 }, (_, index) => ({
+		state: index === 19 ? "unavailable" : "advisory",
+		durationMs: index + 1,
+		scoredCandidates: index === 19 ? 0 : 20,
+		truncatedCandidates: index === 0 ? 2 : 0,
+	}));
+
+	const summary = summarizeLatencyTrials(trials, 20);
+
+	assert.equal(summary.warmRequests, 20);
+	assert.equal(summary.successfulRequests, 19);
+	assert.equal(summary.failedRequests, 1);
+	assert.equal(summary.candidateAttempts, 400);
+	assert.equal(summary.scoredCandidates, 380);
+	assert.equal(summary.candidateSuccessRate, 0.95);
+	assert.equal(summary.truncatedCandidates, 2);
+	assert.equal(summary.truncationRate, 2 / 380);
+	assert.equal(summary.warmP95Ms, 19);
+	assert.equal(summary.warmMaxMs, 20);
+});
+
+test("Laya score ties preserve the baseline retrieval order", () => {
+	const result = evaluateRankings([
+		{ queryId: "q1", candidateId: "a", relevance: 0, baselineRank: 2, layaScore: 0.5, layaChoice: "A" },
+		{ queryId: "q1", candidateId: "z", relevance: 3, baselineRank: 1, layaScore: 0.5, layaChoice: "A" },
+	], [10], "retrieval");
+
+	const evaluation = requireRecord(result, "evaluation");
+	const perQuery = evaluation["perQuery"];
+	assert.ok(Array.isArray(perQuery));
+	const firstQuery = requireRecord(perQuery[0], "first query");
+	const laya = requireRecord(firstQuery["laya"], "Laya metrics");
+	assert.equal(requireNumber(laya["ndcg@10"], "Laya nDCG@10"), 1);
+});
+
+test("ranking metrics report abstract-complete and title-only strata separately", () => {
+	const result = evaluateRankings([
+		{ queryId: "with-abstract", candidateId: "relevant", relevance: 3, baselineRank: 1, layaScore: 0.1, layaChoice: "B", abstract: "Evidence." },
+		{ queryId: "with-abstract", candidateId: "irrelevant", relevance: 0, baselineRank: 2, layaScore: 0.9, layaChoice: "A", abstract: "Unrelated." },
+		{ queryId: "title-only", candidateId: "irrelevant", relevance: 0, baselineRank: 2, layaScore: 0.1, layaChoice: "B", abstract: "" },
+		{ queryId: "title-only", candidateId: "relevant", relevance: 1, baselineRank: 1, layaScore: 0.9, layaChoice: "A", abstract: "" },
+	], [2], "retrieval");
+	const evaluation = requireRecord(result, "evaluation");
+	const abstractStrata = requireRecord(evaluation["abstractStrata"], "abstract strata");
+	const abstractPresent = requireRecord(abstractStrata["abstractPresent"], "abstract-present metrics");
+	const titleOnly = requireRecord(abstractStrata["titleOnly"], "title-only metrics");
+	const abstractLaya = requireRecord(abstractPresent["laya"], "abstract-present Laya metrics");
+	const titleOnlyLaya = requireRecord(titleOnly["laya"], "title-only Laya metrics");
+
+	assert.equal(abstractPresent["queries"], 1);
+	assert.equal(abstractPresent["candidates"], 2);
+	assert.equal(titleOnly["queries"], 1);
+	assert.equal(titleOnly["candidates"], 2);
+	assert.ok(Math.abs(requireNumber(abstractLaya["ndcg@2"], "abstract-present nDCG@2") - 0.6309297535714575) < 1e-12);
+	assert.equal(requireNumber(titleOnlyLaya["ndcg@2"], "title-only nDCG@2"), 1);
+});
+
+test("binary relevance accuracy treats grade 1 partial as not directly useful", () => {
+	const result = evaluateRankings([
+		{ queryId: "q1", candidateId: "partial", relevance: 1, baselineRank: 1, layaScore: 0.1, layaChoice: "B" },
+		{ queryId: "q1", candidateId: "useful", relevance: 2, baselineRank: 2, layaScore: 0.9, layaChoice: "A" },
+	], [2], "retrieval");
+	const evaluation = requireRecord(result, "evaluation");
+	const laya = requireRecord(evaluation["laya"], "Laya metrics");
+	const classification = requireRecord(laya["classification"], "binary relevance metrics");
+
+	assert.equal(classification["accuracy"], 1);
+	assert.equal(classification["precision"], 1);
+	assert.equal(classification["recall"], 1);
+});
+
 async function runCli(args: readonly string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
 	const child = spawn(process.execPath, [resolve("evals/laya-pilot.mjs"), ...args], {
 		cwd: process.cwd(),
@@ -52,8 +124,18 @@ async function runCli(args: readonly string[]): Promise<{ code: number | null; s
 	child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
 	child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
 	const code = await new Promise<number | null>((resolveCode, reject) => {
-		child.once("error", reject);
-		child.once("close", (exitCode) => resolveCode(exitCode));
+		const timeout = setTimeout(() => {
+			child.kill("SIGKILL");
+			reject(new Error("Laya pilot CLI did not exit within 30 seconds."));
+		}, 30_000);
+		child.once("error", (error) => {
+			clearTimeout(timeout);
+			reject(error);
+		});
+		child.once("close", (exitCode) => {
+			clearTimeout(timeout);
+			resolveCode(exitCode);
+		});
 	});
 	return {
 		code,

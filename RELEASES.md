@@ -6,6 +6,21 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 
 ## Unreleased
 
+- **Hypatia chat header**: the block H is the sole accent in the full header; a workspace also named Hypatia shows a distinguishing parent path, and UUID sessions use a short label.
+- **Research diagrams skill**: bundled guidance helps produce source-grounded Mermaid diagrams, with compact syntax for Pi's terminal chat and captions for saved research artifacts. No renderer dependency is added.
+- **Scroll-synced transcript navigation**: the fullscreen transcript keeps the relevant earlier user prompt at the top while scrolling through a long answer, hides it while that prompt is visible there, and gives the pinned row a subtle theme-matched background with a muted divider on taller terminals. Pi's single built-in `↓ Jump to latest message · Esc` control returns to the newest output. In fullscreen mode, `Esc` is assigned to this scroll action and takes precedence over Pi's normal interrupt shortcut; clicking preserves any draft.
+- **Laya retrieval advisory**: replace automatic opt-in reranking with an explicitly requested tool that scores existing topical results and returns a separate suggested order; the primary source order stays intact.
+- **Laya evaluation**: the 30-query public SciFact development run scored 0.5777 nDCG@10 versus BM25's 0.8095 and truncated 91 of 600 candidates, so automatic reordering remains disabled.
+- **`hpt` command alias**: launch Hypatia with `hpt` as well as `hypatia`; supported by npm and standalone installers.
+- **Evidence-aware session summaries**: `/compact` and optional `/tree` branch summaries retain research goals, observed source identifiers and artifact paths, explicit evidence states, unresolved questions, and next steps. Collected source references are labeled as observed, not re-verified during summarization.
+- **Collapsible subagent activity panel**: while research agents run, view each role's model, active tool, and elapsed time above the composer; press `Ctrl+Shift+A` to collapse or expand the panel.
+- **Live literature workflow progress**: `/lit` and `/deepresearch` show search, reading, synthesis, and verification stages from observed parent and subagent runtime events, plus distinct source records returned to the parent runtime.
+- **GitHub Copilot model selection**: recommend the newest available Claude Opus model, then Sonnet, then GPT, rather than choosing a weaker model alphabetically.
+- **PubMed consortium metadata**: preserve affiliations attached to collective and study-group authors.
+- **Updated Pi packages**: `pi-subagents` 0.77.0 reduces parent tool context and returns long reports as previews with file paths; `pi-btw` 0.8.0 adds side-chat slash completion and improves slash-command routing.
+- **Setup and OAuth recovery**: canceling model setup now exits before optional packages, alphaXiv sign-in, or preview installation. A browser callback without an authorization code explains how to retry.
+- **Provider error guidance and Python portability**: failed model calls suggest recovery steps for model access, credits, rate limits, context limits, credentials, and outages. Research agents retry `python3` on macOS/Linux when `python` is unavailable.
+
 ## v0.1.1 - 2026-10-11
 
 - **Optional local Laya paper reranking**: opt into bounded, loopback-only relevance reranking for topical literature searches; exact lookups retain source order, and service failures preserve the original results. Laya remains off by default.
@@ -57,7 +72,7 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 - **Telemetry is off by default.** Nothing is sent unless you opt in with `HYPATIA_TELEMETRY=1` and your own `HYPATIA_POSTHOG_KEY`.
 - **New scholarly sources**: CORE open-access full text (`CORE_API_KEY` unlocks downloads), DOAB open-access books, and OA recovery (`source: oa`) finding a legal open-access copy via Unpaywall, Europe PMC, then CORE.
 - **Resilient paper search** (ported from upstream v0.5.16–v0.5.19): Semantic Scholar ↔ OpenAlex fallback on rate limits, alphaXiv tools fall back to OpenAlex/arXiv, `"null"` optional fields accepted, rejected Semantic Scholar keys named.
-- **Per-role subagent model routes**: `/model-routes` in chat or `hypatia model routes` in a shell configures a primary model and ordered launch fallbacks for researcher, verifier, reviewer, writer, and patcher; the picker distinguishes retaining a Pi role override from inheriting the parent model. The chat header is compact, and active agent/model/tool/progress status appears in the footer only while delegation runs. Use `--json` for non-interactive inspection. Research evals and provenance capture actual model and reported token/cost usage by role.
+- **Per-role subagent model and thinking controls**: `/model-routes` in chat or `hypatia model routes` in a shell configures each role's primary model, ordered launch fallbacks, and thinking level; inheriting the agent/Pi default remains available. Use `--json` for non-interactive model-route inspection. Research evals and provenance capture actual model and reported token/cost usage by role.
 - **Fullscreen research chat by default**: the transcript scrolls while the composer and status stay in view. Idle research shortcuts below the composer yield to live subagent status during delegated work. Switch back with `/settings` or `tuiMode: "regular"` in `~/.hypatia/agent/settings.json` (Pi currently labels fullscreen mode experimental).
 - **Benchmark score lanes**: `evals/score-lane.mjs` aggregates official ScholarQA-CS2/AstaBench, DeepResearch FACT, and SciCoQA results by model and role without bundling gated benchmark data or inventing judge scores.
 - **Subagent outputs land in the workspace** with every file under `outputs/.drafts/`; workflow scripts run from `outputs/.plans/<slug>-workflow.js`.

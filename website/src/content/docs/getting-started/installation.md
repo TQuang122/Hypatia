@@ -17,6 +17,8 @@ curl -fsSL https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/inst
 
 The installer supports macOS (Apple Silicon and Intel) and Linux (x64 and arm64). It installs the launcher to `~/.local/bin`, unpacks the bundle into `~/.local/share/hypatia`, and updates your `PATH` when needed.
 
+Both `hypatia` and its short alias `hpt` launch the same application.
+
 If you previously installed Hypatia with npm and your shell still runs the old binary, run `which -a hypatia`, then `hash -r`, or launch `~/.local/bin/hypatia` directly.
 
 On **Windows**, in PowerShell:
@@ -75,6 +77,7 @@ On macOS or Linux:
 
 ```bash
 rm -f ~/.local/bin/hypatia
+rm -f ~/.local/bin/hpt
 rm -rf ~/.local/share/hypatia
 # optional: settings, sessions, and installed packages
 rm -rf ~/.hypatia

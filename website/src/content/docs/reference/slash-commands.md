@@ -38,9 +38,15 @@ Workflow prompts can call the bundled agents (evidence-scout, scribe, auditor, c
 | `/outputs` | View grouped reports/provenance in the TUI, search text, or copy artifact paths |
 | `/sources` | Browse citations from the latest answer in a scrollable panel; `/` filters, Enter opens, `c` copies the URL, and Esc closes |
 | `/compare-provenance` | Compare recorded source coverage and verification metadata from two completed research runs |
+| `/compact [instructions]` | Compact older context while retaining observed citations, evidence states, artifact paths, and next steps |
+| `/tree` | Navigate session branches; chosen branch summaries preserve the research hypothesis and evidence |
 | `/model-routes` | Configure ordered subagent models and choose Pi-override or parent-model inheritance |
 | `/tools` | Browse public research tools with their source and parameter summary |
 | `/service-tier` | View or set the provider service tier override for supported models |
+
+While subagents are active, Hypatia shows their role, model, current tool, and elapsed time in a panel above the composer. Press `Ctrl+Shift+A` to collapse or expand it.
+
+During `/lit` and `/deepresearch`, the live progress widget tracks search, reading, synthesis, and verification only when the corresponding parent or subagent runtime activity is observed. Its source total counts distinct records returned to the parent runtime, deduplicated by available DOI/arXiv or other IDs, URL, or title; records without identifying fields count per result row. Search results kept inside a subagent are not included until Pi returns them to the parent. The total does not imply that every source was read or verified.
 
 ## Reading research outputs
 

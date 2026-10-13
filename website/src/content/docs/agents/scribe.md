@@ -21,7 +21,7 @@ The scribe does not add inline citations or a Sources section. The [auditor](/hy
 
 ## Visuals
 
-The scribe uses Markdown tables for quantitative comparisons and Mermaid diagrams for architectures or pipelines, only when the supplied evidence supports them. Plots use source-backed data only, with the plotting script saved next to the draft. Every visual gets a caption that names its data source.
+The scribe uses Markdown tables for quantitative comparisons and Mermaid diagrams for architectures or pipelines, only when the supplied evidence supports them. The bundled `research-diagrams` skill guides diagram choice, evidence fidelity, and readable layout. Plots use source-backed data only, with the plotting script saved next to the draft. Every visual gets a caption that names its data source.
 
 ## Used by
 

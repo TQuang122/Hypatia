@@ -1,3 +1,5 @@
+import { USEFUL_RELEVANCE_MINIMUM } from "./laya-pilot-input.mjs";
+
 function queryMetrics(rows, order, cutoffs) {
 	const relevantTotal = rows.filter((row) => row.relevance > 0).length;
 	const firstRelevant = order.findIndex((row) => row.relevance > 0);
@@ -30,7 +32,7 @@ function classificationMetrics(rows) {
 	let falseNegative = 0;
 	let brier = 0;
 	for (const row of rows) {
-		const actual = row.relevance > 0;
+		const actual = row.relevance >= USEFUL_RELEVANCE_MINIMUM;
 		const predicted = row.layaChoice === "A";
 		if (actual && predicted) truePositive += 1;
 		else if (predicted) falsePositive += 1;
@@ -90,7 +92,45 @@ export function pairedQueryBootstrap(perQuery, baselineKey, metric, { iterations
 	};
 }
 
-export function evaluateRankings(rows, cutoffs, baselineName = null) {
+export function summarizeLatencyTrials(trials, candidateCount) {
+	if (!Array.isArray(trials) || trials.length === 0) throw new Error("latency summary requires at least one warm trial.");
+	if (!Number.isInteger(candidateCount) || candidateCount < 1) throw new Error("candidate count must be a positive integer.");
+	let scoredCandidates = 0;
+	let truncatedCandidates = 0;
+	let successfulRequests = 0;
+	for (const [index, trial] of trials.entries()) {
+		if (typeof trial?.durationMs !== "number" || !Number.isFinite(trial.durationMs) || trial.durationMs < 0) {
+			throw new Error(`latency trial ${index + 1} has an invalid duration.`);
+		}
+		const scored = trial.state === "advisory" ? trial.scoredCandidates : 0;
+		const truncated = trial.state === "advisory" ? trial.truncatedCandidates : 0;
+		if (!Number.isInteger(scored) || scored < 0 || scored > candidateCount) {
+			throw new Error(`latency trial ${index + 1} has an invalid scored-candidate count.`);
+		}
+		if (!Number.isInteger(truncated) || truncated < 0 || truncated > scored) {
+			throw new Error(`latency trial ${index + 1} has an invalid truncation count.`);
+		}
+		if (trial.state === "advisory") successfulRequests += 1;
+		scoredCandidates += scored;
+		truncatedCandidates += truncated;
+	}
+	const durations = trials.map((trial) => trial.durationMs).toSorted((left, right) => left - right);
+	const p95Index = Math.max(0, Math.ceil(0.95 * durations.length) - 1);
+	return {
+		warmRequests: trials.length,
+		successfulRequests,
+		failedRequests: trials.length - successfulRequests,
+		candidateAttempts: trials.length * candidateCount,
+		scoredCandidates,
+		candidateSuccessRate: scoredCandidates / (trials.length * candidateCount),
+		truncatedCandidates,
+		truncationRate: scoredCandidates === 0 ? null : truncatedCandidates / scoredCandidates,
+		warmP95Ms: durations[p95Index] ?? 0,
+		warmMaxMs: durations.at(-1) ?? 0,
+	};
+}
+
+function rankingSummary(rows, cutoffs, baselineName) {
 	const rankField = baselineName === null ? "jevRank" : "baselineRank";
 	const baselineKey = baselineName === null ? "jev" : "baseline";
 	const groups = new Map();
@@ -100,7 +140,7 @@ export function evaluateRankings(rows, cutoffs, baselineName = null) {
 		groups.set(row.queryId, group);
 	}
 	const perQuery = [...groups.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([queryId, group]) => {
-		const laya = [...group].sort((left, right) => right.layaScore - left.layaScore || left.candidateId.localeCompare(right.candidateId));
+		const laya = [...group].sort((left, right) => right.layaScore - left.layaScore || left[rankField] - right[rankField]);
 		const baseline = [...group].sort((left, right) => left[rankField] - right[rankField]);
 		return {
 			queryId,
@@ -108,20 +148,39 @@ export function evaluateRankings(rows, cutoffs, baselineName = null) {
 			[baselineKey]: queryMetrics(group, baseline, cutoffs),
 		};
 	});
-	const baselineMetrics = macroAverage(perQuery.map((row) => row[baselineKey]));
+	const baselineMetrics = perQuery.length ? macroAverage(perQuery.map((row) => row[baselineKey])) : {};
 	return {
 		queries: groups.size,
 		candidates: rows.length,
 		relevantCandidates: rows.filter((row) => row.relevance > 0).length,
-		laya: {
-			...macroAverage(perQuery.map((row) => row.laya)),
-			classification: classificationMetrics(rows),
-		},
+		laya: perQuery.length ? macroAverage(perQuery.map((row) => row.laya)) : {},
 		[baselineKey]: baselineName === null
 			? baselineMetrics
 			: { name: baselineName, ...baselineMetrics },
 		perQuery,
-		...(cutoffs.includes(10) ? { pairedBootstrap: pairedQueryBootstrap(perQuery, baselineKey, "ndcg@10") } : {}),
+	};
+}
+
+function withoutPerQuery(summary) {
+	return Object.fromEntries(Object.entries(summary).filter(([key]) => key !== "perQuery"));
+}
+
+export function evaluateRankings(rows, cutoffs, baselineName = null) {
+	const summary = rankingSummary(rows, cutoffs, baselineName);
+	const abstractPresent = rankingSummary(rows.filter((row) => typeof row.abstract === "string" && row.abstract.trim() !== ""), cutoffs, baselineName);
+	const titleOnly = rankingSummary(rows.filter((row) => typeof row.abstract !== "string" || row.abstract.trim() === ""), cutoffs, baselineName);
+	const baselineKey = baselineName === null ? "jev" : "baseline";
+	return {
+		...summary,
+		laya: {
+			...summary.laya,
+			classification: classificationMetrics(rows),
+		},
+		abstractStrata: {
+			abstractPresent: withoutPerQuery(abstractPresent),
+			titleOnly: withoutPerQuery(titleOnly),
+		},
+		...(cutoffs.includes(10) ? { pairedBootstrap: pairedQueryBootstrap(summary.perQuery, baselineKey, "ndcg@10") } : {}),
 		truncatedCandidates: rows.filter((row) => row.layaTruncated).map((row) => row.candidateId),
 	};
 }

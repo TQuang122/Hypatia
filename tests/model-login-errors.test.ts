@@ -18,6 +18,14 @@ test("OpenAI invalid_grant guidance includes the Codex login option", () => {
 	assert.match(explained.message, /hypatia model login openai-codex/);
 });
 
+test("missing authorization codes explain browser recovery and the Codex login option", () => {
+	const explained = describeOAuthLoginFailure("openai", new Error("Missing authorization code"));
+	assert.ok(explained instanceof Error);
+	assert.match(explained.message, /browser returned without an authorization code/i);
+	assert.match(explained.message, /sign out.*private window/i);
+	assert.match(explained.message, /hypatia model login openai-codex/);
+});
+
 test("other login failures remain unchanged", () => {
 	const error = new Error("provider is busy");
 	assert.equal(describeOAuthLoginFailure("anthropic", error), error);

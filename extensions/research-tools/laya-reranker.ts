@@ -1,6 +1,6 @@
 type SearchParams = { query: string; source: string };
 type LayaStatus = {
-	state: "not_applicable" | "reranked" | "unavailable";
+	state: "not_applicable" | "advisory" | "unavailable";
 	message: string;
 	abstractMissingCount?: number;
 	device?: string;
@@ -33,10 +33,14 @@ function text(value: unknown): string | undefined {
 	return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function isTopicSearch(params: SearchParams): boolean {
+function isTopicSearch(params: SearchParams, result: Record<string, unknown>): boolean {
 	const query = params.query.trim();
 	if (!query) return false;
 	if (!["semanticscholar", "openalex", "pubmed", "europepmc", "core"].includes(params.source)) return false;
+	const mode = text(result.mode);
+	if (mode === "fulltext") return false;
+	if (params.source === "pubmed" && mode !== "search") return false;
+	if (params.source === "openalex" && !["work-search", "work-semantic-search", "openalex_search_works"].includes(mode ?? "")) return false;
 	if (/^(?:doi|pmid|pmcid|arxiv|convert|related|fulltext|sections|copyright|citation|citations|references?|work|author|authors|source|venue)\s*:/iu.test(query)) {
 		return false;
 	}
@@ -98,6 +102,7 @@ async function scoreCandidate(
 	baseUrl: URL,
 	timeoutMs: number,
 	apiKey: string | undefined,
+	model: string,
 	fetcher: typeof fetch,
 ): Promise<{ score: number; choice: "A" | "B"; truncated: boolean }> {
 	const title = text(candidate.title);
@@ -109,7 +114,7 @@ async function scoreCandidate(
 			...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
 		},
 		body: JSON.stringify({
-			model: "english",
+			model,
 			state: stateFor(query, title, text(candidate.abstract)),
 			questions: LAYA_QUESTION,
 		}),
@@ -142,8 +147,13 @@ export async function rerankScienceDatabaseResults(
 	environment: NodeJS.ProcessEnv = process.env,
 	fetcher: typeof fetch = globalThis.fetch,
 ): Promise<Record<string, unknown>> {
-	if (environment.HYPATIA_LAYA_ENABLED !== "1") return result;
-	if (!isTopicSearch(params)) {
+	if (environment.HYPATIA_LAYA_ENABLED !== "1") {
+		return withStatus(result, {
+			state: "not_applicable",
+			message: "Laya advisory is disabled; set HYPATIA_LAYA_ENABLED=1 to request local scores.",
+		});
+	}
+	if (!isTopicSearch(params, result)) {
 		return withStatus(result, {
 			state: "not_applicable",
 			message: "Laya was not called: this is not a topical paper-discovery search.",
@@ -162,6 +172,7 @@ export async function rerankScienceDatabaseResults(
 		const baseUrl = loopbackOrigin(environment.HYPATIA_LAYA_URL ?? DEFAULT_BASE_URL);
 		const timeoutMs = positiveInteger(environment.HYPATIA_LAYA_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, "HYPATIA_LAYA_TIMEOUT_MS", 60_000);
 		const concurrency = positiveInteger(environment.HYPATIA_LAYA_CONCURRENCY, DEFAULT_CONCURRENCY, "HYPATIA_LAYA_CONCURRENCY", MAX_CONCURRENCY);
+		const model = environment.HYPATIA_LAYA_MODEL?.trim() || "english";
 		const apiKey = environment.LAYA_API_KEY?.trim() || undefined;
 		const initialHealth = await readJson(fetcher, new URL("/health", baseUrl), timeoutMs, apiKey);
 		if (initialHealth.status !== "ok") throw new Error("Health probe did not report a live service.");
@@ -171,7 +182,7 @@ export async function rerankScienceDatabaseResults(
 		for (let start = 0; start < candidates.length; start += concurrency) {
 			const batch = candidates.slice(start, start + concurrency);
 			const outcomes = await Promise.allSettled(batch.map((candidate, offset) =>
-				scoreCandidate(candidate, params.query, baseUrl, timeoutMs, apiKey, fetcher).then((score) => ({
+				scoreCandidate(candidate, params.query, baseUrl, timeoutMs, apiKey, model, fetcher).then((score) => ({
 					candidate,
 					choice: score.choice,
 					originalRank: start + offset + 1,
@@ -188,13 +199,33 @@ export async function rerankScienceDatabaseResults(
 		}
 
 		const health = await readJson(fetcher, new URL("/health", baseUrl), timeoutMs, apiKey);
+		if (health.status !== "ok") throw new Error("Health probe did not report a healthy service after inference.");
 		const revisions = record(health.revisions);
 		const devices = record(health.checkpoint_devices);
-		const revision = text(revisions.english);
-		if (!revision) throw new Error("English checkpoint revision was not reported after inference.");
+		const revision = text(revisions[model]);
+		if (!revision) throw new Error(`Configured checkpoint revision was not reported after inference (${model}).`);
 
-		const ranked = scored
+		const layaSuggestedOrder = scored
 			.sort((left, right) => right.score - left.score || left.originalRank - right.originalRank)
+			.map(({ candidate, choice, originalRank, score, truncated }) => ({
+				candidateId:
+					text(candidate.candidateId)
+					?? text(candidate.paperId)
+					?? text(candidate.openalexId)
+					?? text(candidate.core_id)
+					?? text(candidate.doi)
+					?? text(candidate.pmid)
+					?? text(candidate.id)
+					?? `rank:${originalRank}`,
+				title: text(candidate.title) ?? "",
+				layaScore: score,
+				layaChoice: choice,
+				layaOriginalRank: originalRank,
+				layaTruncated: truncated,
+				layaAbstractMissing: !text(candidate.abstract),
+			}));
+		const sourceOrder = [...scored]
+			.sort((left, right) => left.originalRank - right.originalRank)
 			.map(({ candidate, choice, originalRank, score, truncated }) => ({
 				...candidate,
 				layaScore: score,
@@ -203,17 +234,17 @@ export async function rerankScienceDatabaseResults(
 				layaTruncated: truncated,
 				layaAbstractMissing: !text(candidate.abstract),
 			}));
-		const device = text(devices.english);
+		const device = text(devices[model]);
 		const abstractMissingCount = candidates.filter((candidate) => !text(candidate.abstract)).length;
 		const durationMs = Math.round(performance.now() - startedAt);
-		return withStatus({ ...result, results: ranked }, {
-			state: "reranked",
-			message: `Laya reranked ${ranked.length} papers locally; original ranks are retained.`,
+		return withStatus({ ...result, results: sourceOrder, layaSuggestedOrder }, {
+			state: "advisory",
+			message: `Laya scored ${layaSuggestedOrder.length} papers; source order was preserved and a separate suggested order is available.`,
 			abstractMissingCount,
 			...(device ? { device } : {}),
 			durationMs,
 			revision,
-			scoredCandidates: ranked.length,
+			scoredCandidates: layaSuggestedOrder.length,
 			truncatedCandidates,
 		});
 	} catch (error) {

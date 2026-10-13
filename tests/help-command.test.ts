@@ -12,6 +12,8 @@ test("Hypatia help omits generic scheduler and process package commands", async 
 		"run",
 		"chain",
 		"parallel",
+		"compact",
+		"tree",
 		"lit",
 		"deepresearch",
 		"ps",
@@ -59,6 +61,8 @@ test("Hypatia help omits generic scheduler and process package commands", async 
 	assert.ok(commands.some((item) => item.startsWith("/search")));
 	assert.ok(commands.some((item) => item.startsWith("/lit ")));
 	assert.ok(commands.some((item) => item.startsWith("/deepresearch ")));
+	assert.ok(commands.some((item) => item.startsWith("/compact [instructions]")));
+	assert.ok(commands.some((item) => item === "/tree"));
 	assert.ok(commands.some((item) => item.startsWith("/websearch")));
 	assert.ok(commands.some((item) => item.startsWith("/hotkeys")));
 	assert.equal(commands.some((item) => item.startsWith("/ps ")), false);

@@ -21,6 +21,116 @@ function sha256(path: string): string {
 	return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+function createNativeInstallerFixture(versions: string[]) {
+	const root = mkdtempSync(join(tmpdir(), "hypatia-native-installer-"));
+	const releaseRoot = join(root, "release");
+	const installRoot = join(root, "install");
+	const binRoot = join(root, "bin");
+	const home = join(root, "home");
+	const platform = process.platform === "darwin" ? "darwin" : "linux";
+	const architecture = process.arch === "arm64" ? "arm64" : "x64";
+	const archiveEntries: string[] = [];
+
+	mkdirSync(releaseRoot, { recursive: true });
+	mkdirSync(home, { recursive: true });
+	for (const version of versions) {
+		const bundleName = `hypatia-${version}-${platform}-${architecture}`;
+		const bundleRoot = join(root, bundleName);
+		const archiveName = `${bundleName}.tar.gz`;
+		const archivePath = join(releaseRoot, archiveName);
+		mkdirSync(bundleRoot, { recursive: true });
+		const launcher = join(bundleRoot, "hypatia");
+		writeFileSync(launcher, `#!/bin/sh
+case "\${1:-}" in
+  --version) printf '%s\\n' "${version}" ;;
+  --help) printf '%s\\n' "Hypatia test help" ;;
+  *) printf '%s\\n' "Hypatia test" ;;
+esac
+`);
+		chmodSync(launcher, 0o755);
+		assert.equal(spawnSync("tar", ["-czf", archivePath, "-C", root, bundleName]).status, 0);
+		archiveEntries.push(`${sha256(archivePath)}  ${archiveName}`);
+	}
+	writeFileSync(join(releaseRoot, "SHA256SUMS"), `${archiveEntries.join("\n")}\n`);
+
+	const env = {
+		...process.env,
+		HOME: home,
+		HYPATIA_INSTALL_APP_DIR: installRoot,
+		HYPATIA_INSTALL_BIN_DIR: binRoot,
+		HYPATIA_INSTALL_BASE_URL: pathToFileURL(releaseRoot).href.replace(/\/$/u, ""),
+		HYPATIA_INSTALL_SKIP_PATH_UPDATE: "1",
+	};
+	const install = (version: string, overrides: NodeJS.ProcessEnv = {}) => spawnSync(
+		"sh",
+		[join(appRoot, "scripts", "install", "install.sh"), version],
+		{ cwd: appRoot, env: { ...env, ...overrides }, encoding: "utf8" },
+	);
+	return { root, installRoot, binRoot, env, install, platform, architecture };
+}
+
+test("native installer preserves an unrelated hpt command", { skip: process.platform === "win32" }, () => {
+	const versions = ["9.8.7", "9.8.8"];
+	const fixture = createNativeInstallerFixture(versions);
+	const firstInstall = fixture.install(versions[0]!);
+	assert.equal(firstInstall.status, 0, firstInstall.stderr);
+
+	const userHpt = join(fixture.binRoot, "hpt");
+	const userCommand = "#!/bin/sh\nprintf 'user hpt\\n'\n";
+	writeFileSync(userHpt, userCommand);
+	const replacement = fixture.install(versions[1]!);
+
+	assert.notEqual(replacement.status, 0);
+	assert.match(replacement.stderr, /existing hpt command.*leaving it untouched/i);
+	assert.equal(readFileSync(userHpt, "utf8"), userCommand);
+	const hypatiaVersion = spawnSync(join(fixture.binRoot, "hypatia"), ["--version"], { encoding: "utf8", env: fixture.env });
+	assert.equal(hypatiaVersion.status, 0, hypatiaVersion.stderr);
+	assert.equal(hypatiaVersion.stdout.trim(), versions[0]);
+	assert.equal(existsSync(join(fixture.installRoot, `hypatia-${versions[1]}-${fixture.platform}-${fixture.architecture}`)), false);
+});
+
+test("native installer rolls back the existing launchers when installing the hpt shim fails", { skip: process.platform === "win32" }, () => {
+	const versions = ["9.8.7", "9.8.8"];
+	const fixture = createNativeInstallerFixture(versions);
+	const firstInstall = fixture.install(versions[0]!);
+	assert.equal(firstInstall.status, 0, firstInstall.stderr);
+	const oldHypatiaShim = readFileSync(join(fixture.binRoot, "hypatia"), "utf8");
+	const oldHptShim = readFileSync(join(fixture.binRoot, "hpt"), "utf8");
+	const mockBin = join(fixture.root, "mock-bin");
+	mkdirSync(mockBin, { recursive: true });
+	const mvWrapper = join(mockBin, "mv");
+	writeFileSync(mvWrapper, `#!/bin/sh
+last_arg=
+for arg do last_arg=$arg; done
+case "\${1:-}" in
+  */hpt-shim-candidate)
+    if [ "\${HYPATIA_INSTALL_TEST_FAIL_HPT_SHIM:-0}" = 1 ] && [ "$last_arg" = "\${HYPATIA_INSTALL_BIN_DIR}/hpt" ]; then
+  echo "injected hpt shim move failure" >&2
+  exit 73
+    fi
+    ;;
+esac
+exec /bin/mv "$@"
+`);
+	chmodSync(mvWrapper, 0o755);
+	const failedUpgrade = fixture.install(versions[1]!, {
+		PATH: `${mockBin}:${process.env.PATH ?? ""}`,
+		HYPATIA_INSTALL_TEST_FAIL_HPT_SHIM: "1",
+	});
+
+	assert.notEqual(failedUpgrade.status, 0);
+	assert.match(failedUpgrade.stderr, /injected hpt shim move failure/u);
+	assert.equal(readFileSync(join(fixture.binRoot, "hypatia"), "utf8"), oldHypatiaShim);
+	assert.equal(readFileSync(join(fixture.binRoot, "hpt"), "utf8"), oldHptShim);
+	for (const command of ["hypatia", "hpt"]) {
+		const result = spawnSync(join(fixture.binRoot, command), ["--version"], { encoding: "utf8", env: fixture.env });
+		assert.equal(result.status, 0, result.stderr);
+		assert.equal(result.stdout.trim(), versions[0]);
+	}
+	assert.equal(existsSync(join(fixture.installRoot, `hypatia-${versions[0]}-${fixture.platform}-${fixture.architecture}`)), true);
+	assert.equal(existsSync(join(fixture.installRoot, `hypatia-${versions[1]}-${fixture.platform}-${fixture.architecture}`)), false);
+});
+
 test("native installer verifies checksums and preserves a working install on failure", {
 	skip: process.platform === "win32",
 }, () => {
@@ -70,6 +180,11 @@ esac
 	const first = install();
 	assert.equal(first.status, 0, first.stderr);
 	assert.equal(existsSync(join(binRoot, "hypatia")), true);
+	assert.equal(existsSync(join(binRoot, "hpt")), true);
+	assert.equal(readFileSync(join(binRoot, "hpt"), "utf8"), readFileSync(join(binRoot, "hypatia"), "utf8"));
+	const aliasVersion = spawnSync(join(binRoot, "hpt"), ["--version"], { encoding: "utf8", env });
+	assert.equal(aliasVersion.status, 0, aliasVersion.stderr);
+	assert.equal(aliasVersion.stdout.trim(), version);
 	assert.equal(existsSync(installedBundle), true);
 
 	const replacementSentinel = join(installedBundle, "replace-me.sentinel");

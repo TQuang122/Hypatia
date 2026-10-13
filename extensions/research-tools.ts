@@ -14,7 +14,7 @@ import { registerContext7Mcp } from "./research-tools/context7-mcp.js";
 import { registerDocxFallback } from "./research-tools/docx-fallback.js";
 import { registerExperimentWorkflow } from "./research-tools/experiment-workflow.js";
 import { registerExperiments } from "./research-tools/experiments.js";
-import { installHypatiaHeader } from "./research-tools/header.js";
+import { installHypatiaHeader, registerPinnedPrompt } from "./research-tools/header.js";
 import { installHypatiaFooter } from "./research-tools/footer.js";
 import { registerHelpCommand } from "./research-tools/help.js";
 import { registerResumeNudge } from "./research-tools/resume-nudge.js";
@@ -29,15 +29,17 @@ import { registerInitCommand, registerOutputsCommand } from "./research-tools/pr
 import { registerServiceTierControls } from "./research-tools/service-tier.js";
 import { registerScienceDatabaseTools } from "./research-tools/science-databases.js";
 import { registerResearchTelemetry } from "./research-tools/telemetry.js";
+import { registerResearchCompaction } from "./research-tools/research-compaction.js";
 
 export default function researchTools(pi: ExtensionAPI): void {
 	registerWarningCenter(pi);
 	const presentation = registerChatPresentation(pi);
 	const turnOutput = registerChatTurnOutput(pi);
 	const tuiModeNotices = registerTuiModeNotices(pi);
+	const pinnedPrompt = registerPinnedPrompt(pi);
 	// Pi 0.66.x folds post-switch/resume lifecycle into session_start.
 	pi.on("session_start", (_event, ctx) => {
-		installHypatiaHeader(ctx, tuiModeNotices.observeRuntimeMode);
+		installHypatiaHeader(ctx, tuiModeNotices.observeRuntimeMode, pinnedPrompt, pi.getSettings().fullscreenScrollbar ?? "auto");
 		installHypatiaFooter(ctx);
 	});
 
@@ -68,5 +70,6 @@ export default function researchTools(pi: ExtensionAPI): void {
 	registerCitationSourcesCommand(pi);
 	registerServiceTierControls(pi);
 	registerScienceDatabaseTools(pi);
+	registerResearchCompaction(pi);
 	registerResearchTelemetry(pi);
 }

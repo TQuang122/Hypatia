@@ -95,22 +95,36 @@ test("search errors and metadata-only notes remain visible in collapsed output",
 	assert.match(note, /Metadata-only/);
 });
 
-test("Laya reranking and fail-open status remain visible in collapsed search results", () => {
-	const renderers = createPaperSearchRenderers("database");
-	const reranked = plain(renderers.renderResult(
-		result({
-			source: "openalex",
-			results: [{ title: "Paper", layaScore: 0.9 }],
-			layaStatus: { state: "reranked", message: "Laya reranked 1 paper locally; original ranks are retained." },
-		}),
+test("Laya advisory is explicit, visible, and leaves the source order in place", () => {
+	const renderers = createPaperSearchRenderers("laya");
+	const advisoryData = result({
+		source: "openalex",
+		results: [
+			{ title: "Original first", layaScore: 0.2, layaOriginalRank: 1 },
+			{ title: "Suggested first", layaScore: 0.9, layaOriginalRank: 2 },
+		],
+		layaSuggestedOrder: [
+			{ candidateId: "suggested", title: "Suggested first", layaScore: 0.9, layaOriginalRank: 2 },
+			{ candidateId: "original", title: "Original first", layaScore: 0.2, layaOriginalRank: 1 },
+		],
+		layaStatus: { state: "advisory", message: "Laya suggested an order; source order was preserved." },
+	});
+	const call = plain(renderers.renderCall({ source: "openalex", query: "query" }, theme, context("openalex")).render(120));
+	assert.match(call, /Laya advisory · OpenAlex/u);
+	const advisory = plain(renderers.renderResult(
+		advisoryData,
 		collapsed,
 		theme,
 		context("openalex"),
 	).render(140));
-	assert.match(reranked, /Complete · OpenAlex · 1 result/);
-	assert.match(reranked, /Laya reranked 1 paper locally/u);
+	assert.match(advisory, /Complete · OpenAlex · 2 results/u);
+	assert.match(advisory, /Laya suggested an order; source order was preserved/u);
+	const expanded = plain(renderers.renderResult(advisoryData, { ...collapsed, expanded: true }, theme, context("openalex")).render(1_000));
+	assert.match(expanded, /layaSuggestedOrder/u);
+	assert.ok(expanded.indexOf("Original first") < expanded.indexOf("Suggested first"));
 
-	const fallback = plain(renderers.renderResult(
+	const databaseRenderer = createPaperSearchRenderers("database");
+	const fallback = plain(databaseRenderer.renderResult(
 		result({
 			source: "openalex",
 			results: [{ title: "Paper" }],

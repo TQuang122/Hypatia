@@ -34,6 +34,10 @@ test("Windows installer extracts into staging before replacing installed bundle"
 	assert.equal((installer.match(/-UseBasicParsing/g) ?? []).length, 3);
 	assert.match(installer, /\$backupBundleDir = Join-Path \$stagingPhysicalRoot "previous-bundle"/);
 	assert.match(installer, /\$backupBinDir = Join-Path \$stagingPhysicalRoot "previous-bin"/);
+	assert.match(installer, /\$hptShimCandidate = Join-Path \$stagedBinDir "hpt\.cmd"/);
+	assert.match(installer, /\$hptPath = Join-Path \$installBinDir "hpt\.cmd"/);
+	assert.match(installer, /existing hpt command.*leaving it untouched/i);
+	assert.match(installer, /REM Managed by Hypatia standalone installer\./);
 	assert.match(installer, /HYPATIA_INSTALL_TEST_FAIL_AFTER_BUNDLE_BACKUP/);
 	assert.match(installer, /Move-Item -LiteralPath \$installBinDir -Destination \$backupBinDir/);
 	assert.match(installer, /Move-Item -LiteralPath \$stagedBinPhysicalDir -Destination \$installBinDir/);

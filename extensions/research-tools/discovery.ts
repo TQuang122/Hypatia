@@ -53,7 +53,7 @@ function formatToolLine(tool: ToolInfo): string {
 
 export function registerDiscoveryCommands(pi: ExtensionAPI): void {
 	pi.registerCommand("tools", {
-		description: "Browse public research tools with their source and parameter summary.",
+		description: "Browse public research tools, including science search and the explicit Laya advisory tool, with their source and parameter summary.",
 		handler: async (_args, ctx) => {
 			const tools = pi
 				.getAllTools()

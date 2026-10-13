@@ -9,10 +9,12 @@ import {
 	clearSubagentModelOverride,
 	getConfiguredParentModel,
 	getSubagentModelOverride,
+	getSubagentThinkingOverride,
 	parseSubagentModelRoutes,
 	readSubagentModelRoutes,
 	readSubagentModelSettings,
 	resolveSubagentModelRoutes,
+	setSubagentThinkingOverride,
 	writeSubagentModelRoutes,
 } from "../src/model/role-routing.js";
 import { getSubagentModelRoutes } from "../extensions/research-tools/subagent-models.js";
@@ -245,6 +247,45 @@ test("writeSubagentModelRoutes rejects invalid choices without replacing saved r
 	assert.deepEqual(readSubagentModelRoutes(path), saved);
 });
 
+test("per-role thinking overrides persist in Pi settings and clear without losing other fields", (t) => {
+	const root = mkdtempSync(join(tmpdir(), "hypatia-subagent-thinking-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const settingsPath = join(root, "settings.json");
+	writeFileSync(settingsPath, JSON.stringify({ subagents: { defaultThinking: "medium", agentOverrides: {
+		"evidence-scout": { model: "openai-codex/gpt-6-luna", fast: true }, critic: { thinking: "low" },
+	} } }));
+
+	setSubagentThinkingOverride(settingsPath, "evidence-scout", "xhigh");
+	let settings = readSubagentModelSettings(settingsPath);
+	assert.equal(getSubagentThinkingOverride(settings, "evidence-scout"), "xhigh");
+	assert.equal(getSubagentThinkingOverride(settings, "critic"), "low");
+	assert.equal((settings.subagents as any).agentOverrides["evidence-scout"].model, "openai-codex/gpt-6-luna");
+
+	setSubagentThinkingOverride(settingsPath, "evidence-scout", undefined);
+	settings = readSubagentModelSettings(settingsPath);
+	assert.equal(getSubagentThinkingOverride(settings, "evidence-scout"), undefined);
+	assert.deepEqual((settings.subagents as any).agentOverrides["evidence-scout"], { model: "openai-codex/gpt-6-luna", fast: true });
+	assert.equal((settings.subagents as any).defaultThinking, "medium");
+	setSubagentThinkingOverride(settingsPath, "evidence-scout", false);
+	assert.equal(getSubagentThinkingOverride(readSubagentModelSettings(settingsPath), "evidence-scout"), false);
+});
+
+test("model-routes dialog selects and clears a role-specific thinking level", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "hypatia-chat-thinking-routes-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const settingsPath = join(root, "settings.json");
+	writeFileSync(settingsPath, JSON.stringify({ subagents: { agentOverrides: { "evidence-scout": { model: "openai-codex/gpt-6-luna" } } } }));
+	const first = routeDialogContext([0, 1, 6, 5]);
+	await runSubagentModelRoutesDialog(first.context, root, []);
+	assert.equal(getSubagentThinkingOverride(readSubagentModelSettings(settingsPath), "evidence-scout"), "high");
+	assert.match(first.notifications.at(-1) ?? "", /thinking set to high/u);
+
+	const second = routeDialogContext([0, 1, 0, 5]);
+	await runSubagentModelRoutesDialog(second.context, root, []);
+	assert.equal(getSubagentThinkingOverride(readSubagentModelSettings(settingsPath), "evidence-scout"), undefined);
+	assert.deepEqual((readSubagentModelSettings(settingsPath).subagents as any).agentOverrides["evidence-scout"], { model: "openai-codex/gpt-6-luna" });
+});
+
 test("model routes provides structured inspection without requiring a TTY", (t) => {
 	const workingDir = mkdtempSync(join(tmpdir(), "hypatia-model-routes-cli-cwd-"));
 	const homeDir = mkdtempSync(join(tmpdir(), "hypatia-model-routes-cli-home-"));
@@ -338,7 +379,7 @@ test("chat model route editor preserves Pi override when selected", async (t) =>
 			},
 		},
 	}));
-	const { context } = routeDialogContext([0, 1, 5]);
+	const { context } = routeDialogContext([0, 2, 5]);
 
 	await runSubagentModelRoutesDialog(context, root, [], "openai-codex/gpt-6-luna");
 
@@ -372,7 +413,7 @@ test("chat model route editor clears both overrides to inherit the parent model"
 			},
 		},
 	}));
-	const { context } = routeDialogContext([0, 2, 5]);
+	const { context } = routeDialogContext([0, 3, 5]);
 
 	await runSubagentModelRoutesDialog(context, root, [], "openai-codex/gpt-6-luna");
 

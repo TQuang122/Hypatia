@@ -10,13 +10,17 @@ import {
 	clearSubagentModelOverride,
 	getConfiguredParentModel,
 	getSubagentModelOverride,
+	getSubagentThinkingOverride,
 	readSubagentModelRoutes,
 	readSubagentModelSettings,
 	resolveSubagentModelRoutes,
+	setSubagentThinkingOverride,
 	SUBAGENT_MODEL_ROLES,
+	SUBAGENT_THINKING_LEVELS,
 	writeSubagentModelRoutes,
 	type SubagentModelRole,
 	type SubagentModelRoutes,
+	type SubagentThinkingLevel,
 } from "./model-runtime.js";
 import { getAvailableModelRecords } from "./model-runtime.js";
 
@@ -31,6 +35,9 @@ const ROLE_LABELS: Record<SubagentModelRole, string> = {
 const FINISH = "__finish__";
 const DONE = "__done__";
 const CONFIGURE = "__configure__";
+const CONFIGURE_THINKING = "__configure_thinking__";
+const INHERIT_THINKING = "__inherit_thinking__";
+const DISABLE_THINKING = "__disable_thinking__";
 const INHERIT_PI = "__inherit_pi__";
 const INHERIT_PARENT = "__inherit_parent__";
 const BACK = "__back__";
@@ -138,18 +145,23 @@ export async function runSubagentModelRoutesDialog(
 		const parentModel = parentModelSpec ?? getConfiguredParentModel(settings);
 		const resolved = resolveSubagentModelRoutes(routes, settings);
 		const roleOptions: DialogOption<SubagentModelRole | typeof DONE>[] = [
-			...SUBAGENT_MODEL_ROLES.map((role) => ({
-				value: role,
-				label: `${ROLE_LABELS[role]} — ${routeSourceLabel(role, resolved, parentModel)}`,
-			})),
+			...SUBAGENT_MODEL_ROLES.map((role) => {
+				const thinking = getSubagentThinkingOverride(settings, role);
+				return {
+					value: role,
+					label: `${ROLE_LABELS[role]} — ${routeSourceLabel(role, resolved, parentModel)} · thinking ${thinking === false ? "disabled" : thinking ?? "inherited"}`,
+				};
+			}),
 			{ value: DONE, label: "Finish" },
 		];
 		const role = await selectValue(ctx, "Choose a subagent role to configure", roleOptions);
 		if (!role || role === DONE) return;
 
 		const piOverride = getSubagentModelOverride(settings, role);
+		const thinkingOverride = getSubagentThinkingOverride(settings, role);
 		const actionOptions: DialogOption<string>[] = [
 			{ value: CONFIGURE, label: "Choose primary model and ordered fallbacks" },
+			{ value: CONFIGURE_THINKING, label: `Choose thinking level · ${thinkingOverride === false ? "disabled" : thinkingOverride ?? "inherited"}` },
 			...(piOverride ? [{ value: INHERIT_PI, label: `Use Pi override · ${piOverride}` }] : []),
 			{ value: INHERIT_PARENT, label: `Inherit parent model${parentModel ? ` · ${parentModel}` : ""}` },
 			{ value: BACK, label: "Back without changing this role" },
@@ -166,6 +178,30 @@ export async function runSubagentModelRoutesDialog(
 			clearSubagentModelOverride(settingsPath, role);
 			routes = saveRoleRoute(routePath, routes, role, undefined);
 			ctx.ui.notify(`${ROLE_LABELS[role]} will inherit the parent model.`, "info");
+			continue;
+		}
+		if (action === CONFIGURE_THINKING) {
+			const currentThinking = getSubagentThinkingOverride(settings, role);
+			const thinkingOptions: DialogOption<SubagentThinkingLevel | typeof INHERIT_THINKING | typeof DISABLE_THINKING>[] = [
+				{ value: INHERIT_THINKING, label: "Use the agent or Pi default" },
+				{ value: DISABLE_THINKING, label: "Do not request a thinking level" },
+				...SUBAGENT_THINKING_LEVELS.map((level) => ({
+					value: level,
+					label: `${level}${currentThinking === level ? " · current" : ""}`,
+				})),
+			];
+			const thinking = await selectValue(ctx, `Thinking level for ${ROLE_LABELS[role]}`, thinkingOptions);
+			if (!thinking) return;
+			if (thinking === INHERIT_THINKING) {
+				setSubagentThinkingOverride(settingsPath, role, undefined);
+				ctx.ui.notify(`${ROLE_LABELS[role]} will use its agent/Pi thinking default.`, "info");
+			} else if (thinking === DISABLE_THINKING) {
+				setSubagentThinkingOverride(settingsPath, role, false);
+				ctx.ui.notify(`${ROLE_LABELS[role]} will not request a thinking level.`, "info");
+			} else {
+				setSubagentThinkingOverride(settingsPath, role, thinking);
+				ctx.ui.notify(`${ROLE_LABELS[role]} thinking set to ${thinking}.`, "info");
+			}
 			continue;
 		}
 		if (availableOptions.length === 0) {

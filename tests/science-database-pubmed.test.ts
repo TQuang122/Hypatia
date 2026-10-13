@@ -82,13 +82,16 @@ test("PubMed XML preserves inline title and abstract text plus every author affi
 		"<PubmedArticleSet><PubmedArticle><MedlineCitation><Article>",
 		"<ArticleTitle>Role of <i>BRCA1</i> in <b>DNA</b> repair</ArticleTitle>",
 		"<Abstract><AbstractText>Loss of <i>BRCA1</i> changes <b>DNA repair</b>.</AbstractText></Abstract>",
-		"<AuthorList><Author><LastName>Jones</LastName><AffiliationInfo><Affiliation>First Institute</Affiliation></AffiliationInfo><AffiliationInfo><Affiliation>Second University</Affiliation></AffiliationInfo></Author></AuthorList>",
+		"<AuthorList><Author><LastName>Jones</LastName><AffiliationInfo><Affiliation>First Institute</Affiliation></AffiliationInfo><AffiliationInfo><Affiliation>Second University</Affiliation></AffiliationInfo></Author>",
+		"<Author><CollectiveName>Example Study Group</CollectiveName><AffiliationInfo><Affiliation>Consortium Research Center</Affiliation></AffiliationInfo></Author></AuthorList>",
 		"</Article></MedlineCitation></PubmedArticle></PubmedArticleSet>",
 	].join("");
 	const article = parsePubmedArticles(xml)[0];
 	assert.equal(article?.title, "Role of BRCA1 in DNA repair");
 	assert.equal(article?.abstract, "Loss of BRCA1 changes DNA repair.");
-	assert.deepEqual((article?.authors as Array<{ affiliations: string[] }>)[0]?.affiliations, ["First Institute", "Second University"]);
+	const authors = article?.authors as Array<{ collectiveName?: string; affiliations: string[] }>;
+	assert.deepEqual(authors[0]?.affiliations, ["First Institute", "Second University"]);
+	assert.deepEqual(authors[1], { collectiveName: "Example Study Group", affiliations: ["Consortium Research Center"] });
 });
 
 test("PubMed source supports metadata, ID conversion, related links, full text, copyright, and citation lookup modes", async () => {

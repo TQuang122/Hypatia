@@ -29,6 +29,12 @@ type SetupOptions = {
 	defaultThinkingLevel?: ThinkingLevel;
 };
 
+type SetupFlowOverrides = {
+	isInteractiveTerminal?: typeof isInteractiveTerminal;
+	promptIntro?: typeof promptIntro;
+	runModelSetup?: typeof runModelSetup;
+};
+
 function printNonInteractiveSetupGuidance(): void {
 	printInfo("Non-interactive terminal. Use explicit commands:");
 	printInfo("  hypatia model login <provider>");
@@ -111,15 +117,16 @@ async function maybeInstallPreviewDependencies(): Promise<void> {
 	}
 }
 
-export async function runSetup(options: SetupOptions): Promise<void> {
-	if (!isInteractiveTerminal()) {
+export async function runSetup(options: SetupOptions, overrides: SetupFlowOverrides = {}): Promise<void> {
+	if (!(overrides.isInteractiveTerminal ?? isInteractiveTerminal)()) {
 		printNonInteractiveSetupGuidance();
 		return;
 	}
 
 	try {
-		await promptIntro("Hypatia setup");
-		await runModelSetup(options.settingsPath, options.authPath);
+		await (overrides.promptIntro ?? promptIntro)("Hypatia setup");
+		const modelConfigured = await (overrides.runModelSetup ?? runModelSetup)(options.settingsPath, options.authPath);
+		if (!modelConfigured) return;
 		await maybeInstallOptionalPackages(options);
 		await maybeLoginAlpha();
 		await maybeInstallPreviewDependencies();

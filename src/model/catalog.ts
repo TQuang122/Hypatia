@@ -85,8 +85,16 @@ const RESEARCH_MODEL_FAMILY_PREFERENCES: ResearchModelPreference[] = [
 		reason: "newest authenticated Claude Opus model for source-heavy research work",
 	},
 	{
+		matches: (model) => model.provider === "github-copilot" && /^claude-opus-\d+(?:[.-]\d+)*$/i.test(model.id),
+		reason: "newest GitHub Copilot Claude Opus model for source-heavy research work",
+	},
+	{
 		matches: (model) => model.provider === "anthropic" && /^claude-sonnet-\d+(?:-\d+)*$/i.test(model.id),
 		reason: "newest authenticated Claude Sonnet model for iterative research work",
+	},
+	{
+		matches: (model) => model.provider === "github-copilot" && /^claude-sonnet-\d+(?:[.-]\d+)*$/i.test(model.id),
+		reason: "newest GitHub Copilot Claude Sonnet model for iterative research work",
 	},
 	{
 		matches: (model) => model.provider === "openai" && /^gpt-\d+(?:\.\d+)*(?:-.+)?$/i.test(model.id),
@@ -95,6 +103,10 @@ const RESEARCH_MODEL_FAMILY_PREFERENCES: ResearchModelPreference[] = [
 	{
 		matches: (model) => model.provider === "openai-codex" && /^gpt-\d+(?:\.\d+)*(?:-.+)?$/i.test(model.id),
 		reason: "newest authenticated GPT model exposed through OpenAI Codex",
+	},
+	{
+		matches: (model) => model.provider === "github-copilot" && /^gpt-\d+(?:\.\d+)*(?:-.+)?$/i.test(model.id),
+		reason: "newest GitHub Copilot GPT model when Claude is unavailable",
 	},
 	{
 		matches: (model) => model.provider === "opencode" && /^claude-opus-\d+(?:-\d+)*$/i.test(model.id),
@@ -246,10 +258,10 @@ function compareCurrentModelFamily(left: ModelRecord, right: ModelRecord): numbe
 }
 
 function currentFamilyPreference(model: ModelRecord): CurrentFamilyPreference | undefined {
-	const anthropic = /^claude-(opus|sonnet)-(\d+(?:-\d+)*)$/i.exec(model.id);
-	if (anthropic) {
-		const family = anthropic[1]!.toLowerCase();
-		const parsedVersion = parseClaudeVersion(anthropic[2]!);
+	const claude = /^claude-(opus|sonnet)-(\d+(?:[-.]\d+)*)$/i.exec(model.id);
+	if (claude) {
+		const family = claude[1]!.toLowerCase();
+		const parsedVersion = parseClaudeVersion(claude[2]!.replaceAll(".", "-"));
 		return {
 			family: `${model.provider}/claude-${family}`,
 			version: parsedVersion.version,
@@ -261,7 +273,7 @@ function currentFamilyPreference(model: ModelRecord): CurrentFamilyPreference | 
 	}
 
 	const openAi = /^gpt-(\d+(?:\.\d+)*)(?:-(.+))?$/i.exec(model.id);
-	if (openAi && (model.provider === "openai" || model.provider === "openai-codex" || model.provider === "opencode")) {
+	if (openAi && (model.provider === "openai" || model.provider === "openai-codex" || model.provider === "github-copilot" || model.provider === "opencode")) {
 		const suffix = openAi[2]?.toLowerCase();
 		return {
 			family: `${model.provider}/gpt`,

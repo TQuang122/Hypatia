@@ -6,11 +6,16 @@ import {
 	clearSubagentModelOverride,
 	getConfiguredParentModel,
 	getSubagentModelOverride,
+	getSubagentThinkingOverride,
 	resolveSubagentModelRoutes,
 	SUBAGENT_MODEL_ROLES,
+	SUBAGENT_THINKING_LEVELS,
+	setSubagentThinkingOverride,
 	writeSubagentModelRoutes,
 	type SubagentModelRole,
 	type SubagentModelRoutes,
+	type SubagentThinkingLevel,
+	type SubagentThinkingOverride,
 } from "./role-routing.js";
 import { getAvailableModelRecords } from "./catalog.js";
 import {
@@ -30,6 +35,8 @@ const ROLE_LABELS: Record<SubagentModelRole, string> = {
 };
 const BACK = "__back__";
 const FINISH = "__finish__";
+const INHERIT_THINKING = "__inherit_thinking__";
+const DISABLE_THINKING = "__disable_thinking__";
 const INHERIT_PI = "__inherit_pi__";
 const INHERIT_PARENT = "__inherit_parent__";
 
@@ -37,8 +44,9 @@ type RouteEditResult =
 	| { kind: "back" }
 	| { kind: "inherit-pi" }
 	| { kind: "inherit-parent" }
+	| { kind: "thinking"; level: SubagentThinkingOverride }
 	| { kind: "configured"; models: string[] };
-type RouteAction = "configure" | typeof INHERIT_PI | typeof INHERIT_PARENT | "back";
+type RouteAction = "configure" | "configure-thinking" | typeof INHERIT_PI | typeof INHERIT_PARENT | "back";
 
 function modelSpec(model: { provider: string; id: string }): string {
 	return `${model.provider}/${model.id}`;
@@ -80,10 +88,12 @@ async function configureRoleRoute(
 	currentModels: string[],
 	piOverride: string | undefined,
 	parentModel: string | undefined,
+	currentThinking: SubagentThinkingOverride,
 	availableModels: { value: string; label: string; hint?: string }[],
 ): Promise<RouteEditResult> {
 	const options: PromptSelectOption<RouteAction>[] = [
 		{ value: "configure", label: "Choose primary model and ordered fallbacks" },
+		{ value: "configure-thinking", label: `Choose thinking level · ${currentThinking === false ? "disabled" : currentThinking ?? "inherited"}` },
 	];
 	if (piOverride) options.push({ value: INHERIT_PI, label: `Use Pi override · ${piOverride}` });
 	options.push({ value: INHERIT_PARENT, label: `Inherit parent model${parentModel ? ` · ${parentModel}` : ""}` });
@@ -97,6 +107,21 @@ async function configureRoleRoute(
 	if (action === "back") return { kind: "back" };
 	if (action === INHERIT_PI) return { kind: "inherit-pi" };
 	if (action === INHERIT_PARENT) return { kind: "inherit-parent" };
+	if (action === "configure-thinking") {
+		const level = await promptSelect<SubagentThinkingLevel | typeof INHERIT_THINKING | typeof DISABLE_THINKING>(
+			`Thinking level for ${ROLE_LABELS[role]}:`,
+			[
+				{ value: INHERIT_THINKING, label: "Use the agent or Pi default" },
+				{ value: DISABLE_THINKING, label: "Do not request a thinking level" },
+				...SUBAGENT_THINKING_LEVELS.map((value) => ({
+					value,
+					label: `${value}${currentThinking === value ? " (current)" : ""}`,
+				})),
+			],
+			currentThinking === false ? DISABLE_THINKING : currentThinking ?? INHERIT_THINKING,
+		);
+		return { kind: "thinking", level: level === INHERIT_THINKING ? undefined : level === DISABLE_THINKING ? false : level };
+	}
 	if (availableModels.length === 0) {
 		printWarning("No authenticated non-premium models are available to configure.");
 		return { kind: "back" };
@@ -159,11 +184,11 @@ export async function runSubagentModelRouteEditor(authPath: string, agentDir: st
 					...SUBAGENT_MODEL_ROLES.map((value) => ({
 						value,
 						label: ROLE_LABELS[value],
-						hint: resolved[value].source === "model-routes"
+						hint: `${resolved[value].source === "model-routes"
 							? `route ${resolved[value].models.join(" -> ")}`
 							: resolved[value].source === "pi-settings"
 								? `Pi override ${resolved[value].models[0]}`
-								: `parent ${parentModel ?? "not set"}`,
+								: `parent ${parentModel ?? "not set"}`} · thinking ${getSubagentThinkingOverride(settings, value) === false ? "disabled" : getSubagentThinkingOverride(settings, value) ?? "inherited"}`,
 					})),
 					{ value: "done", label: "Finish" },
 				],
@@ -176,9 +201,19 @@ export async function runSubagentModelRouteEditor(authPath: string, agentDir: st
 				routes.roles[role] ?? [],
 				getSubagentModelOverride(settings, role),
 				parentModel,
+				getSubagentThinkingOverride(settings, role),
 				availableModels,
 			);
 			if (choice.kind === "back") continue;
+			if (choice.kind === "thinking") {
+				setSubagentThinkingOverride(settingsPath, role, choice.level);
+				printSuccess(choice.level === false
+					? `${ROLE_LABELS[role]} will not request a thinking level.`
+					: choice.level
+					? `${ROLE_LABELS[role]} thinking set to ${choice.level}.`
+					: `${ROLE_LABELS[role]} will use its agent/Pi thinking default.`);
+				continue;
+			}
 			if (choice.kind === "inherit-pi") {
 				routes = saveRoleRoute(path, routes, role, undefined);
 				printSuccess(`${ROLE_LABELS[role]} will use its Pi role override.`);

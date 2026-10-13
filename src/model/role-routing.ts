@@ -5,6 +5,9 @@ import { dirname, join } from "node:path";
 export const SUBAGENT_MODEL_ROLES = ["evidence-scout", "scribe", "auditor", "critic", "reviser"] as const;
 
 export type SubagentModelRole = (typeof SUBAGENT_MODEL_ROLES)[number];
+export const SUBAGENT_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export type SubagentThinkingLevel = (typeof SUBAGENT_THINKING_LEVELS)[number];
+export type SubagentThinkingOverride = SubagentThinkingLevel | false | undefined;
 export type SubagentModelRoutes = {
 	version: 1;
 	roles: Partial<Record<SubagentModelRole, string[]>>;
@@ -149,6 +152,16 @@ export function getSubagentModelOverride(settings: unknown, role: SubagentModelR
 	return model === "inherit" ? undefined : model;
 }
 
+export function getSubagentThinkingOverride(settings: unknown, role: SubagentModelRole): SubagentThinkingOverride {
+	if (!isRecord(settings) || !isRecord(settings.subagents) || !isRecord(settings.subagents.agentOverrides)) return undefined;
+	const override = settings.subagents.agentOverrides[role];
+	if (!isRecord(override)) return undefined;
+	if (override.thinking === false) return false;
+	return typeof override.thinking === "string" && SUBAGENT_THINKING_LEVELS.includes(override.thinking as SubagentThinkingLevel)
+		? override.thinking as SubagentThinkingLevel
+		: undefined;
+}
+
 export function getConfiguredParentModel(settings: unknown): string | undefined {
 	if (!isRecord(settings)) return undefined;
 	const provider = settings.defaultProvider;
@@ -156,27 +169,36 @@ export function getConfiguredParentModel(settings: unknown): string | undefined 
 	return typeof provider === "string" && typeof model === "string" ? `${provider}/${model}` : undefined;
 }
 
-export function clearSubagentModelOverride(path: string, role: SubagentModelRole): void {
+function updateSubagentAgentOverride(path: string, role: SubagentModelRole, field: "model" | "thinking", value: string | false | undefined): void {
 	const settings = readSubagentModelSettings(path);
-	if (!isRecord(settings.subagents) || !isRecord(settings.subagents.agentOverrides)) return;
-
-	const overrides = settings.subagents.agentOverrides;
+	if (settings.subagents !== undefined && !isRecord(settings.subagents)) throw new Error(`Invalid Pi settings at ${path}: subagents must be an object.`);
+	const subagents = isRecord(settings.subagents) ? settings.subagents : {};
+	if (subagents.agentOverrides !== undefined && !isRecord(subagents.agentOverrides)) throw new Error(`Invalid Pi settings at ${path}: subagents.agentOverrides must be an object.`);
+	const overrides = isRecord(subagents.agentOverrides) ? subagents.agentOverrides : {};
 	const current = overrides[role];
-	if (!isRecord(current) || !Object.hasOwn(current, "model")) return;
-
-	const updatedCurrent = { ...current };
-	delete updatedCurrent.model;
+	if (current !== undefined && !isRecord(current)) throw new Error(`Invalid Pi settings at ${path}: subagent override for ${role} must be an object.`);
+	if (value === undefined && (!isRecord(current) || !Object.hasOwn(current, field))) return;
+	const updatedCurrent = { ...(isRecord(current) ? current : {}) };
+	if (value === undefined) delete updatedCurrent[field];
+	else updatedCurrent[field] = value;
 	const updatedOverrides = { ...overrides };
 	if (Object.keys(updatedCurrent).length === 0) delete updatedOverrides[role];
 	else updatedOverrides[role] = updatedCurrent;
+	const updatedSubagents = { ...subagents };
+	if (Object.keys(updatedOverrides).length === 0) delete updatedSubagents.agentOverrides;
+	else updatedSubagents.agentOverrides = updatedOverrides;
+	const updatedSettings = { ...settings };
+	if (Object.keys(updatedSubagents).length) updatedSettings.subagents = updatedSubagents;
+	else delete updatedSettings.subagents;
+	writeJsonAtomically(path, updatedSettings);
+}
 
-	writeJsonAtomically(path, {
-		...settings,
-		subagents: {
-			...settings.subagents,
-			agentOverrides: updatedOverrides,
-		},
-	});
+export function clearSubagentModelOverride(path: string, role: SubagentModelRole): void {
+	updateSubagentAgentOverride(path, role, "model", undefined);
+}
+
+export function setSubagentThinkingOverride(path: string, role: SubagentModelRole, thinking: SubagentThinkingOverride): void {
+	updateSubagentAgentOverride(path, role, "thinking", thinking);
 }
 
 function resolveRole(

@@ -21,12 +21,36 @@ export function pairedQueryBootstrap(
 	options?: { iterations?: number; seed?: number },
 ): PairedQueryBootstrapResult;
 
+export type LayaLatencyTrial = {
+	state: string;
+	durationMs: number;
+	scoredCandidates?: number;
+	truncatedCandidates?: number;
+};
+
+export function summarizeLatencyTrials(
+	trials: readonly LayaLatencyTrial[],
+	candidateCount: number,
+): {
+	warmRequests: number;
+	successfulRequests: number;
+	failedRequests: number;
+	candidateAttempts: number;
+	scoredCandidates: number;
+	candidateSuccessRate: number;
+	truncatedCandidates: number;
+	truncationRate: number | null;
+	warmP95Ms: number;
+	warmMaxMs: number;
+};
+
 export type LayaRankingRow = {
 	queryId: string;
 	candidateId: string;
 	relevance: number;
 	layaScore: number;
 	layaChoice: "A" | "B";
+	abstract?: string;
 	layaTruncated?: boolean;
 	jevRank?: number;
 	baselineRank?: number;

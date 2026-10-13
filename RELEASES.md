@@ -6,6 +6,16 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 
 ## Unreleased
 
+No unreleased changes.
+
+## v0.1.2 - 2026-10-13
+
+- **A clearer research chat**: the Hypatia header now keeps the H mark as its sole accent and labels duplicate workspace names and UUID sessions compactly. Fullscreen transcripts keep the relevant prompt in view while scrolling, with Pi's built-in jump-to-latest control. Live subagent activity can be collapsed, and `/lit` and `/deepresearch` show observed workflow stages.
+- **Source-grounded diagrams and summaries**: a built-in `research-diagrams` skill guides compact Mermaid diagrams for terminal chat and evidence-aware artifacts. `/compact` and optional `/tree` summaries retain observed sources, evidence states, unresolved questions, and next steps.
+- **Safer literature guidance**: optional Laya scoring is explicit and advisory; it preserves the provider's source order. The 30-query SciFact development evaluation underperformed BM25 (0.5777 vs. 0.8095 nDCG@10), so automatic reranking remains disabled.
+- **More reliable setup and model recovery**: model setup cancellation exits cleanly; OAuth callbacks without a code and common provider failures now include recovery guidance. Copilot model recommendations prefer available Claude Opus, then Sonnet, then GPT. PubMed keeps affiliations for collective authors.
+- **Installer and workflow improvements**: `hpt` is available as a short CLI alias, with rollback-safe npm and standalone installers. Updated `pi-subagents` and `pi-btw` improve long reports and side-chat command handling; research agents can fall back to `python3` when `python` is unavailable.
+
 ## v0.1.1 - 2026-10-11
 
 - **Optional local Laya paper reranking**: opt into bounded, loopback-only relevance reranking for topical literature searches; exact lookups retain source order, and service failures preserve the original results. Laya remains off by default.
@@ -57,7 +67,7 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 - **Telemetry is off by default.** Nothing is sent unless you opt in with `HYPATIA_TELEMETRY=1` and your own `HYPATIA_POSTHOG_KEY`.
 - **New scholarly sources**: CORE open-access full text (`CORE_API_KEY` unlocks downloads), DOAB open-access books, and OA recovery (`source: oa`) finding a legal open-access copy via Unpaywall, Europe PMC, then CORE.
 - **Resilient paper search** (ported from upstream v0.5.16–v0.5.19): Semantic Scholar ↔ OpenAlex fallback on rate limits, alphaXiv tools fall back to OpenAlex/arXiv, `"null"` optional fields accepted, rejected Semantic Scholar keys named.
-- **Per-role subagent model routes**: `/model-routes` in chat or `hypatia model routes` in a shell configures a primary model and ordered launch fallbacks for researcher, verifier, reviewer, writer, and patcher; the picker distinguishes retaining a Pi role override from inheriting the parent model. The chat header is compact, and active agent/model/tool/progress status appears in the footer only while delegation runs. Use `--json` for non-interactive inspection. Research evals and provenance capture actual model and reported token/cost usage by role.
+- **Per-role subagent model and thinking controls**: `/model-routes` in chat or `hypatia model routes` in a shell configures each role's primary model, ordered launch fallbacks, and thinking level; inheriting the agent/Pi default remains available. Use `--json` for non-interactive model-route inspection. Research evals and provenance capture actual model and reported token/cost usage by role.
 - **Fullscreen research chat by default**: the transcript scrolls while the composer and status stay in view. Idle research shortcuts below the composer yield to live subagent status during delegated work. Switch back with `/settings` or `tuiMode: "regular"` in `~/.hypatia/agent/settings.json` (Pi currently labels fullscreen mode experimental).
 - **Benchmark score lanes**: `evals/score-lane.mjs` aggregates official ScholarQA-CS2/AstaBench, DeepResearch FACT, and SciCoQA results by model and role without bundling gated benchmark data or inventing judge scores.
 - **Subagent outputs land in the workspace** with every file under `outputs/.drafts/`; workflow scripts run from `outputs/.plans/<slug>-workflow.js`.

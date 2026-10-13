@@ -59,14 +59,14 @@ export function openAlexRequestFailure(status: number, statusText: string, snipp
 	const lookup = status === 404 ? url?.pathname.match(/^\/(works|authors|sources)\/([^/]+)$/) : null;
 	const known = lookup ? OPENALEX_ENTITY_SEARCH[lookup[1]!] : undefined;
 	if (lookup && known) {
-		const [entity, search] = known;
-		let id = lookup[2]!;
+		const [entity, query] = known;
+		let identifier = lookup[2]!;
 		try {
-			id = decodeURIComponent(id);
+			identifier = decodeURIComponent(identifier);
 		} catch {
-			// Keep the encoded path segment if it is not valid URI text.
+			// The encoded form is still enough to identify the failed request.
 		}
-		return new Error(`OpenAlex has no ${entity} "${id}". Lookups take an OpenAlex ID (or DOI/ISSN where supported); to find one by name or title, use ${search}.`);
+		return new Error(`OpenAlex returned 404 for the ${entity} lookup "${identifier}". Search by name or title with ${query}, then retry using the returned OpenAlex ID.`);
 	}
 	const hint = !usingApiKey && [401, 403, 429].includes(status) ? ` ${OPENALEX_API_KEY_HINT}` : "";
 	return new Error(`OpenAlex request failed: ${status} ${statusText}. ${snippet}${hint}`);

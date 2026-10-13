@@ -130,21 +130,30 @@ function parseArticleIds(article: Record<string, unknown>): Record<string, strin
 }
 
 function parseAuthors(value: unknown): Array<Record<string, unknown>> {
-	return listValue(value).map((item) => {
-		const author = recordValue(item);
-		const collective = textValue(author.CollectiveName);
-		if (collective) return { collectiveName: collective, affiliations: [] };
-		const affiliations = listValue(author.AffiliationInfo)
-			.flatMap((info) => listValue(recordValue(info).Affiliation))
-			.map((affiliation) => textValue(affiliation))
-			.filter((affiliation): affiliation is string => Boolean(affiliation));
-		return prune({
-			lastName: textValue(author.LastName),
-			foreName: textValue(author.ForeName),
-			initials: textValue(author.Initials),
+	const authors: Array<Record<string, unknown>> = [];
+	for (const entry of listValue(value)) {
+		const fields = recordValue(entry);
+		const affiliations: string[] = [];
+		for (const detail of listValue(fields.AffiliationInfo)) {
+			for (const rawText of listValue(recordValue(detail).Affiliation)) {
+				const name = textValue(rawText);
+				if (name) affiliations.push(name);
+			}
+		}
+
+		const group = textValue(fields.CollectiveName);
+		if (group) {
+			authors.push({ collectiveName: group, affiliations });
+			continue;
+		}
+		authors.push(prune({
+			lastName: textValue(fields.LastName),
+			foreName: textValue(fields.ForeName),
+			initials: textValue(fields.Initials),
 			affiliations,
-		});
-	});
+		}));
+	}
+	return authors;
 }
 
 function parsePubmedArticle(value: unknown, orderedArticle: unknown): Record<string, unknown> {

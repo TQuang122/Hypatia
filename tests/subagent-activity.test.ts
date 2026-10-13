@@ -8,15 +8,18 @@ import {
 	SUBAGENT_DELEGATION_STARTED_EVENT,
 	SUBAGENT_DELEGATION_UPDATE_EVENT,
 } from "pi-subagents/delegation";
+import { Key, visibleWidth } from "@earendil-works/pi-tui";
 
 import { registerSubagentActivityStatus } from "../extensions/research-tools/subagent-activity.js";
 
 type EventHandler = (data: unknown) => void;
 type ExtensionHandler = (event: { type: string }, ctx: unknown) => void;
+type ShortcutHandler = (ctx: any) => void | Promise<void>;
 
 function fakePi() {
 	const busHandlers = new Map<string, Set<EventHandler>>();
 	const lifecycleHandlers = new Map<string, ExtensionHandler[]>();
+	const shortcuts = new Map<string, ShortcutHandler>();
 	const events = {
 		on(channel: string, handler: EventHandler) {
 			const handlers = busHandlers.get(channel) ?? new Set<EventHandler>();
@@ -24,9 +27,13 @@ function fakePi() {
 			busHandlers.set(channel, handlers);
 			return () => handlers.delete(handler);
 		},
+		emit(channel: string, data: unknown) {
+			for (const handler of busHandlers.get(channel) ?? []) handler(data);
+		},
 	};
 	const pi = {
 		events,
+		registerShortcut: (key: string, options: { handler: ShortcutHandler }) => { shortcuts.set(key, options.handler); },
 		on(event: string, handler: ExtensionHandler) {
 			lifecycleHandlers.set(event, [...(lifecycleHandlers.get(event) ?? []), handler]);
 			return () => undefined;
@@ -34,11 +41,15 @@ function fakePi() {
 	} as unknown as ExtensionAPI;
 	return {
 		pi,
+		shortcuts,
 		emitBus(channel: string, data: unknown) {
 			for (const handler of busHandlers.get(channel) ?? []) handler(data);
 		},
 		emitLifecycle(event: string, ctx: unknown, payload: Record<string, unknown> = {}) {
 			for (const handler of lifecycleHandlers.get(event) ?? []) handler({ ...payload, type: event }, ctx);
+		},
+		async emitShortcut(key: string, ctx: unknown) {
+			await shortcuts.get(key)?.(ctx);
 		},
 	};
 }
@@ -95,6 +106,82 @@ test("active subagent status shows role, actual model, and progress without task
 		model: "openai-codex/gpt-6-luna",
 	});
 	assert.equal(statusCalls.at(-1)?.text, undefined);
+});
+
+test("async workflow children appear in the activity panel and clear when their run completes", () => {
+	const { pi, emitLifecycle, emitBus } = fakePi();
+	const { context, statuses, widgets } = activityContext();
+	const agentActivity: unknown[] = [];
+	pi.events.on("hypatia:research-agent-activity", (event) => agentActivity.push(event));
+	pi.events.on("subagents:rpc:v1:request", (request) => {
+		const requestId = (request as { requestId: string }).requestId;
+		pi.events.emit(`subagents:rpc:v1:reply:${requestId}`, {
+			version: 1, requestId, success: true,
+			data: {
+				fleet: { entries: [{ agent: "evidence-scout", model: "openai-codex/gpt-6-luna" }] },
+				asyncSnapshot: { runs: [{ children: [{ id: "methods", kind: "step", activity: { currentTool: "web_search", toolCount: 4 } }] }] },
+			},
+		});
+	});
+	registerSubagentActivityStatus(pi);
+	emitLifecycle("session_start", context);
+	emitBus("subagent:child-status", {
+		type: "subagent.child-status", version: 1, runId: "workflow-1", childId: "methods",
+		status: "started", ts: Date.now(), source: "async", agent: "evidence-scout",
+		label: "private prompt should not be rendered",
+	});
+	assert.match(statuses.at(-1) ?? "", /evidence-scout/u);
+	const panelFactory = widgets.at(-1)?.content as ((tui: any, theme: any) => { render(width: number): string[] }) | undefined;
+	assert.equal(typeof panelFactory, "function");
+	const panel = panelFactory!({ terminal: { rows: 30, columns: 100 }, requestRender() {} }, {
+		fg: (_color: string, text: string) => text,
+		bold: (text: string) => text,
+		style: (text: string) => text,
+		colors: { customMessageBg: "" },
+	});
+	assert.match(panel.render(100).join("\n"), /evidence-scout.*gpt-6-luna.*web_search.*4 tools/u);
+	assert.equal(panel.render(100).join("\n").includes("private prompt"), false);
+	assert.deepEqual(agentActivity.at(-1), [{ id: "workflow-1:methods", agent: "evidence-scout", currentTool: "web_search" }]);
+
+	emitBus("subagent:async-complete", { id: "child-run-1", parentWorkflowRunId: "workflow-1", state: "complete" });
+	assert.equal(typeof widgets.at(-1)?.content, "function", "a completed child must not hide its active siblings");
+	emitBus("subagent:async-complete", { id: "workflow-1", state: "complete" });
+	assert.equal(statuses.at(-1), undefined);
+	assert.equal(widgets.at(-1)?.content, undefined);
+	assert.deepEqual(agentActivity.at(-1), []);
+});
+
+test("standalone async subagents stay visible after the launch tool returns", (t) => {
+	t.mock.timers.enable({ apis: ["Date", "setInterval"], now: 10_000 });
+	const { pi, emitLifecycle, emitBus } = fakePi();
+	const { context, statuses, widgets } = activityContext();
+	const updates: unknown[] = [];
+	pi.events.on("hypatia:research-agent-activity", (event) => updates.push(event));
+	pi.events.on("subagents:rpc:v1:request", (request) => {
+		const requestId = (request as { requestId: string }).requestId;
+		pi.events.emit(`subagents:rpc:v1:reply:${requestId}`, {
+			version: 1, requestId, success: true,
+			data: {
+				fleet: { entries: [{ agent: "evidence-scout", model: "openai-codex/gpt-6-luna", startedAt: 10_000 }] },
+				asyncSnapshot: { runs: [{ id: "single-run", kind: "subagent", activity: { currentTool: "web_search", toolCount: 2 } }] },
+			},
+		});
+	});
+	registerSubagentActivityStatus(pi);
+	t.after(() => emitLifecycle("session_shutdown", context));
+	emitLifecycle("session_start", context);
+	emitBus("subagent:async-started", {
+		id: "single-run", mode: "single", agent: "evidence-scout", startedAt: 10_000, toolCallId: "tool-1",
+		task: "private task text must not be published",
+	});
+
+	assert.ok(widgets.some((widget) => typeof widget.content === "function"));
+	assert.match(statuses.at(-1) ?? "", /evidence-scout.*gpt-6-luna.*web_search.*2 tools/u);
+	assert.deepEqual(updates.at(-1), [{ id: "async:single-run", agent: "evidence-scout", currentTool: "web_search" }]);
+
+	emitBus("subagent:async-complete", { id: "single-run", runId: "single-run", agent: "evidence-scout", state: "complete" });
+	assert.equal(statuses.at(-1), undefined);
+	assert.equal(widgets.at(-1)?.content, undefined);
 });
 
 test("direct subagent snapshots replace stale tool and model fields", () => {
@@ -214,8 +301,9 @@ test("subagent status stays hidden without a TUI and clears on session shutdown"
 function activityContext() {
 	const statuses: Array<string | undefined> = [];
 	const hints: boolean[] = [];
+	const widgets: Array<{ key: string; content: unknown; placement?: string }> = [];
 	return {
-		statuses, hints,
+		statuses, hints, widgets,
 		context: {
 			mode: "tui", hasUI: true,
 			ui: {
@@ -223,11 +311,65 @@ function activityContext() {
 					statuses.push(text);
 					hints.push(text === undefined);
 				},
-				setWidget: (_key: string, content: unknown) => assert.equal(content, undefined, "shortcuts now live inside the footer"),
+				setWidget: (key: string, content: unknown, options?: { placement?: string }) => widgets.push({ key, content, placement: options?.placement }),
 			},
 		},
 	};
 }
+
+test("agent activity panel shows observed model, tool and elapsed time and can be collapsed", async (t) => {
+	t.mock.timers.enable({ apis: ["Date", "setInterval"], now: 10_000 });
+	const { pi, emitLifecycle, emitBus, emitShortcut } = fakePi();
+	const { context, widgets } = activityContext();
+	const renders: number[] = [];
+	registerSubagentActivityStatus(pi);
+	t.after(() => emitLifecycle("session_shutdown", context));
+	emitLifecycle("session_start", context);
+	assert.equal(widgets.at(-1)?.content, undefined);
+
+	emitBus(SUBAGENT_DELEGATION_REQUEST_EVENT, {
+		requestId: "panel-agent", agent: "evidence-scout", model: "openai-codex/gpt-6-luna",
+		task: "private paper search task must never appear",
+	});
+	const panelFactory = widgets.at(-1)?.content as ((tui: any, theme: any) => { render(width: number): string[] }) | undefined;
+	assert.equal(widgets.at(-1)?.placement, "aboveEditor");
+	assert.equal(typeof panelFactory, "function");
+	const panel = panelFactory!({ mode: "fullscreen", terminal: { rows: 30, columns: 100 }, requestRender: () => renders.push(Date.now()) }, {
+		fg: (_color: string, text: string) => text,
+		bold: (text: string) => text,
+		style: (text: string) => text,
+		colors: { customMessageBg: "" },
+	});
+	let lines = panel.render(100);
+	assert.match(lines.join("\n"), /evidence-scout.*requested openai-codex\/gpt-6-luna.*starting.*0s/u);
+	assert.equal(lines.some((line) => line.includes("private paper search task")), false);
+	assert.ok(lines.every((line) => visibleWidth(line) <= 100));
+
+	emitBus(SUBAGENT_DELEGATION_STARTED_EVENT, { requestId: "panel-agent" });
+	emitBus(SUBAGENT_DELEGATION_UPDATE_EVENT, {
+		requestId: "panel-agent", model: "openai-codex/gpt-6-luna", currentTool: "web_search", toolCount: 2, durationMs: 1_500,
+	});
+	lines = panel.render(100);
+	assert.match(lines.join("\n"), /evidence-scout.*openai-codex\/gpt-6-luna.*web_search.*2 tools.*1s/u);
+	t.mock.timers.tick(2_100);
+	assert.ok(renders.length > 0, "elapsed time refreshes while an agent runs");
+	assert.match(panel.render(100).join("\n"), /2s/u);
+
+	await emitShortcut(Key.ctrlShift("a"), context);
+	lines = panel.render(100);
+	assert.equal(lines.length, 4, "collapsed panel keeps a compact bordered summary");
+	assert.match(lines.join("\n"), /Ctrl\+Shift\+A expand/u);
+	await emitShortcut(Key.ctrlShift("a"), context);
+	lines = panel.render(100);
+	assert.match(lines.join("\n"), /Ctrl\+Shift\+A collapse/u);
+	assert.match(lines.join("\n"), /▸ evidence-scout/u);
+	await emitShortcut(Key.ctrlShift("a"), context);
+	assert.ok(panel.render(50)[0]!.includes("Ctrl+Shift+A expand"));
+	assert.ok(panel.render(50).every((line) => visibleWidth(line) <= 50));
+
+	emitBus(SUBAGENT_DELEGATION_RESPONSE_EVENT, { requestId: "panel-agent", status: "completed" });
+	assert.equal(widgets.at(-1)?.content, undefined);
+});
 
 test("main activity follows observed streaming and stays busy until final settlement", (t) => {
 	t.mock.timers.enable({ apis: ["Date", "setInterval"], now: 10_000 });

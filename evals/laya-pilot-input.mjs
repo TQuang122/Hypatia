@@ -251,6 +251,132 @@ export function loadCandidateRows(labelsPath, {
 	};
 }
 
+export const USEFUL_RELEVANCE_MINIMUM = 2;
+
+function summarizeLabels(rows) {
+	const relevanceGrades = Object.fromEntries([0, 1, 2, 3].map((grade) => [
+		grade,
+		rows.filter((row) => row.relevance === grade).length,
+	]));
+	return {
+		candidates: rows.length,
+		queries: new Set(rows.map((row) => row.queryId)).size,
+		relevantCandidates: rows.filter((row) => row.relevance > 0).length,
+		nonRelevantCandidates: relevanceGrades[0],
+		answerUsefulCandidates: rows.filter((row) => row.relevance >= USEFUL_RELEVANCE_MINIMUM).length,
+		notUsefulCandidates: rows.filter((row) => row.relevance < USEFUL_RELEVANCE_MINIMUM).length,
+		relevanceGrades,
+		titleOnlyCandidates: rows.filter((row) => row.abstract.trim() === "").length,
+		abstractCandidates: rows.filter((row) => row.abstract.trim() !== "").length,
+	};
+}
+
+export function balanceTrainingRows(rows, { seed = "hypatia-laya-balanced-training-v1" } = {}) {
+	if (!Array.isArray(rows) || rows.length === 0) throw new Error("training balance requires candidate rows.");
+	if (typeof seed !== "string" || seed.trim() === "") throw new Error("training balance seed must be a non-empty string.");
+	const candidateKeys = new Set();
+	for (const [index, row] of rows.entries()) {
+		const rowNumber = index + 1;
+		if (typeof row !== "object" || row === null || Array.isArray(row)) {
+			throw new Error(`candidate row ${rowNumber} must be an object.`);
+		}
+		const queryId = requiredText(row, "queryId", rowNumber);
+		const candidateId = requiredText(row, "candidateId", rowNumber);
+		if (!Number.isInteger(row.relevance) || row.relevance < 0 || row.relevance > 3) {
+			throw new Error(`candidate row ${rowNumber}: relevance must be an integer between 0 and 3.`);
+		}
+		if (typeof row.abstract !== "string") throw new Error(`candidate row ${rowNumber}: abstract must be a string.`);
+		const key = JSON.stringify([queryId, candidateId]);
+		if (candidateKeys.has(key)) throw new Error(`candidate row ${rowNumber}: duplicate candidate_id for query_id.`);
+		candidateKeys.add(key);
+	}
+
+	const usefulRows = rows.filter((row) => row.relevance >= USEFUL_RELEVANCE_MINIMUM);
+	const notUsefulRows = rows.filter((row) => row.relevance < USEFUL_RELEVANCE_MINIMUM);
+	if (usefulRows.length === 0 || notUsefulRows.length === 0) {
+		throw new Error("balanced training rows require both useful and not-useful candidates.");
+	}
+	const targetPerClass = Math.min(usefulRows.length, notUsefulRows.length);
+	const choose = (candidates) => new Set(candidates
+		.toSorted((left, right) => {
+			const leftKey = createHash("sha256").update(`${seed}:${left.queryId}:${left.candidateId}`).digest("hex");
+			const rightKey = createHash("sha256").update(`${seed}:${right.queryId}:${right.candidateId}`).digest("hex");
+			return leftKey.localeCompare(rightKey) || left.candidateId.localeCompare(right.candidateId);
+		})
+		.slice(0, targetPerClass)
+		.map((row) => JSON.stringify([row.queryId, row.candidateId])));
+	const selected = new Set([...choose(usefulRows), ...choose(notUsefulRows)]);
+	const balancedRows = rows.filter((row) => selected.has(JSON.stringify([row.queryId, row.candidateId])));
+	return {
+		rows: balancedRows,
+		before: summarizeLabels(rows),
+		after: summarizeLabels(balancedRows),
+		omittedCandidates: rows.length - balancedRows.length,
+	};
+}
+
+export function splitRowsByQuery(rows, { testQueryIds } = {}) {
+	if (!Array.isArray(rows) || rows.length === 0) throw new Error("query split requires candidate rows.");
+	if (!Array.isArray(testQueryIds) || testQueryIds.length === 0) {
+		throw new Error("test-query-ids must be a non-empty array of query IDs.");
+	}
+	const normalizedTestQueryIds = testQueryIds.map((queryId, index) => {
+		if (typeof queryId !== "string" || queryId.trim() === "") {
+			throw new Error(`test query ID ${index + 1} must be a non-empty string.`);
+		}
+		return queryId.trim();
+	});
+	if (new Set(normalizedTestQueryIds).size !== normalizedTestQueryIds.length) {
+		throw new Error("test-query-ids must be unique.");
+	}
+
+	const queryText = new Map();
+	const candidateKeys = new Set();
+	for (const [index, row] of rows.entries()) {
+		const rowNumber = index + 1;
+		if (typeof row !== "object" || row === null || Array.isArray(row)) {
+			throw new Error(`candidate row ${rowNumber} must be an object.`);
+		}
+		const queryId = requiredText(row, "queryId", rowNumber);
+		const query = requiredText(row, "query", rowNumber);
+		const candidateId = requiredText(row, "candidateId", rowNumber);
+		if (!Number.isInteger(row.relevance) || row.relevance < 0 || row.relevance > 3) {
+			throw new Error(`candidate row ${rowNumber}: relevance must be an integer between 0 and 3.`);
+		}
+		if (typeof row.abstract !== "string") throw new Error(`candidate row ${rowNumber}: abstract must be a string.`);
+		const key = JSON.stringify([queryId, candidateId]);
+		if (candidateKeys.has(key)) throw new Error(`candidate row ${rowNumber}: duplicate candidate_id for query_id.`);
+		if (queryText.has(queryId) && queryText.get(queryId) !== query) {
+			throw new Error(`candidate row ${rowNumber}: query text differs within query_id.`);
+		}
+		candidateKeys.add(key);
+		queryText.set(queryId, query);
+	}
+
+	const queryIds = [...queryText.keys()];
+	if (queryIds.length < 2) throw new Error("query split requires at least two distinct queries.");
+	const unknownTestQueryIds = normalizedTestQueryIds.filter((queryId) => !queryText.has(queryId));
+	if (unknownTestQueryIds.length > 0) {
+		throw new Error(`test query IDs not present in candidate rows: ${unknownTestQueryIds.join(", ")}.`);
+	}
+	if (normalizedTestQueryIds.length >= queryIds.length) {
+		throw new Error("test query IDs must leave at least one training query.");
+	}
+	const sortedTestQueryIds = normalizedTestQueryIds.toSorted();
+	const testQuerySet = new Set(sortedTestQueryIds);
+	const trainQueryIds = queryIds.filter((queryId) => !testQuerySet.has(queryId)).toSorted();
+	const trainRows = rows.filter((row) => !testQuerySet.has(row.queryId));
+	const testRows = rows.filter((row) => testQuerySet.has(row.queryId));
+	return {
+		trainQueryIds,
+		testQueryIds: sortedTestQueryIds,
+		trainRows,
+		testRows,
+		trainSummary: summarizeLabels(trainRows),
+		testSummary: summarizeLabels(testRows),
+	};
+}
+
 export function localOrigin(value) {
 	let url;
 	try {

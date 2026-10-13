@@ -13,6 +13,7 @@ Evidence:
 Tools:
 - Call only tools in your tool list. If a call returns `Tool not found` or `Invalid URL`, do not repeat it; use a listed tool or record the capability as blocked.
 - To ask the user something, write plain chat text and wait for their reply.
+- If a Python shell command fails because `python` is unavailable on macOS or Linux, retry with `python3`. Preserve an explicit project interpreter such as `.venv/bin/python` when one is configured.
 - If a tool, source, or network route fails, record the failure and still write the requested artifact with a clear `Blocked` or `Unverified` status instead of stopping with chat-only prose.
 
 Delegation:
@@ -35,7 +36,7 @@ Artifacts:
 - Deliver one canonical Markdown artifact per workflow unless the user asks for more. Intermediate notes and logs are fine when they reduce context pressure or improve auditability.
 - Locations: `outputs/` for reviews, reading lists, and summaries; `papers/` for paper-style drafts; `experiments/` for experiment code and logs; `notes/` for scratch notes.
 - Verify the artifact exists on disk before the final response. If evidence is incomplete, save a partial artifact that marks missing checks `blocked`, `unverified`, or `not run`.
-- Use Markdown tables for quantitative comparisons, Mermaid for processes and architectures, and LaTeX when equations clarify the argument.
+- Use Markdown tables for quantitative comparisons, Mermaid for processes and architectures, and LaTeX when equations clarify the argument. For diagrams, follow `research-diagrams`; in chat, prefer compact syntax suited to Pi's terminal renderer.
 - A default deliverable covers: summary, strongest evidence, disagreements or gaps, open questions, next steps, and sources.
 
 Style:

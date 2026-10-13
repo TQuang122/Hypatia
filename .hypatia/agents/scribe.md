@@ -39,6 +39,7 @@ Unresolved issues, disagreements between sources, gaps in evidence.
 - Use Markdown tables for quantitative data (benchmarks, comparisons, trends). Plot only source-backed data, and save the plotting script next to the draft.
 - Do not create charts from invented or example data. If values are missing, describe the planned measurement instead.
 - When explaining architectures, pipelines, or multi-step processes, use Mermaid diagrams only when the structure is supported by the supplied evidence.
+- Follow the bundled `research-diagrams` guidance for Mermaid type, evidence fidelity, captions, and compact Pi-compatible syntax when the output is a chat answer.
 - Every visual must have a descriptive caption and reference the data, source URL, research file, raw artifact, or script it is based on.
 - Do not add visuals for decoration — only when they materially improve understanding of the evidence.
 

@@ -861,11 +861,19 @@ export async function authenticateModelProvider(authPath: string, settingsPath?:
 }
 
 export function describeOAuthLoginFailure(providerId: string, error: unknown): unknown {
-	if (!(error instanceof Error) || !error.message.includes("invalid_grant")) return error;
+	if (!(error instanceof Error)) return error;
 	const alternative = providerId === "openai" ? " For ChatGPT sign-in, you can also run `hypatia model login openai-codex`." : "";
-	return new Error(
-		`${error.message}\nThe sign-in was rejected, usually because of a stale browser session. Sign out of the provider's site or use a private window, then run \`hypatia model login ${providerId}\` again.${alternative}`,
-	);
+	if (error.message.includes("invalid_grant")) {
+		return new Error(
+			`${error.message}\nThe provider rejected this authorization attempt. Sign out of its website or retry in a private browser window, then run \`hypatia model login ${providerId}\` again.${alternative}`,
+		);
+	}
+	if (/missing authorization code/i.test(error.message)) {
+		return new Error(
+			`${error.message}\nThe callback arrived without the code needed to finish login. Start a fresh browser session, then run \`hypatia model login ${providerId}\` again.${alternative}`,
+		);
+	}
+	return error;
 }
 
 export async function loginModelProvider(authPath: string, providerId?: string, settingsPath?: string): Promise<boolean> {
@@ -1039,7 +1047,11 @@ export async function selectDefaultModel(settingsPath: string, authPath: string)
 	await setDefaultModelSpec(settingsPath, authPath, spec);
 }
 
-export async function runModelSetup(settingsPath: string, authPath: string): Promise<void> {
+export async function runModelSetup(
+	settingsPath: string,
+	authPath: string,
+	chooseAccess: typeof promptChoice = promptChoice,
+): Promise<boolean> {
 	let status = await collectModelStatus(settingsPath, authPath);
 
 	while (status.availableModels.length === 0) {
@@ -1048,7 +1060,7 @@ export async function runModelSetup(settingsPath: string, authPath: string): Pro
 			"API key or custom provider (OpenAI, Anthropic, ZAI, Kimi, MiniMax, ...)",
 			"Cancel",
 		];
-		const selection = await promptChoice("Choose how to configure model access:", choices, 0);
+		const selection = await chooseAccess("Choose how to configure model access:", choices, 0);
 		if (selection === 0) {
 			const loggedIn = await loginModelProvider(authPath, undefined, settingsPath);
 			if (!loggedIn) {
@@ -1062,8 +1074,8 @@ export async function runModelSetup(settingsPath: string, authPath: string): Pro
 				continue;
 			}
 		} else {
-			printInfo("Setup cancelled.");
-			return;
+			printInfo("Model setup cancelled. Run `hypatia model login` or configure a provider API key, then rerun `hypatia setup`.");
+			return false;
 		}
 		status = await collectModelStatus(settingsPath, authPath);
 		if (status.availableModels.length === 0) {
@@ -1075,11 +1087,13 @@ export async function runModelSetup(settingsPath: string, authPath: string): Pro
 
 	if (status.currentValid) {
 		printInfo(`Model: ${status.current}`);
-		return;
+		return true;
 	}
 
 	const recommended = status.recommended ?? status.availableModels[0];
 	if (recommended) {
 		await setDefaultModelSpec(settingsPath, authPath, recommended);
+		return true;
 	}
+	return false;
 }

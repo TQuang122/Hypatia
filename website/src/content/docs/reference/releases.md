@@ -9,6 +9,9 @@ This page summarizes what changed in recent Hypatia releases. GitHub releases us
 
 ## Unreleased
 
+- **Scroll-synced transcript navigation**: Pi's single built-in `↓ Jump to latest message · Esc` control returns the fullscreen transcript to its newest output. In fullscreen mode, Escape is assigned to this scroll action and takes precedence over Pi's normal interrupt shortcut; clicking preserves any draft.
+- **Hypatia chat header**: the block H is the sole accent in the full header; a workspace also named Hypatia shows a distinguishing parent path, and UUID sessions use a short label.
+- **Research diagrams skill**: bundled guidance helps produce source-grounded Mermaid diagrams, with compact syntax for Pi's terminal chat and captions for saved research artifacts. No renderer dependency is added.
 - **Native ideas and experiment setup in chat**: `/idea <goal>` or `/experiments generate <goal>` uses Hypatia models/auth with built-in QML, retrieval/ranking, RAG/agent evaluation, statistics, ML/LLM and general research guidance, or custom project knowledge. No AutoResearch clone or Python backend is needed for new idea runs. `/experiments create <goal>` and proposal selection prepare contracts through chat, with inferred defaults, grouped prerequisite questions and one final approval per generation/benchmark. Request caps, caches, provenance and review gates persist; old Python-backed runs remain compatible.
 
 - **Legacy Idea Forge provider configuration**: optional `providerConfig` selects a private JSON for generation and persists across worker launches/resume. Relative `AUTORESEARCH_CONFIG` paths resolve against the backend clone rather than the experiment workspace.

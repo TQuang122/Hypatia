@@ -1,6 +1,7 @@
 import { stripVTControlCharacters } from "node:util";
 import { Container, Text, truncateToWidth } from "@earendil-works/pi-tui";
 import type { AgentActivityOutcome, ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { SUBAGENT_DELEGATION_CANCEL_EVENT, SUBAGENT_DELEGATION_REQUEST_EVENT, SUBAGENT_DELEGATION_RESPONSE_EVENT } from "pi-subagents/delegation";
 import { scrubSecretsText } from "./secret-scrubber.js";
 
 const TURN_ENTRY = "hypatia-turn-output";
@@ -23,6 +24,59 @@ type TurnOutput = {
 	omitted: number;
 };
 type ModeOutput = { version: 1; from: "regular" | "fullscreen"; to: "regular" | "fullscreen"; appliedNow: boolean };
+type ResearchStage = "search" | "read" | "synthesis" | "verification";
+type ResearchProgress = {
+	command: "lit" | "deepresearch";
+	completed: Set<ResearchStage>;
+	activeTools: Map<string, ResearchStage>;
+	asyncVerificationLaunches: Set<string>;
+	sources: Set<string>;
+	verification: Set<string>;
+	verificationRuns: Map<string, string>;
+	delegatedStages: Map<string, ResearchStage>;
+	seenEvidence: boolean;
+};
+
+const RESEARCH_STAGE_LABELS: Record<ResearchStage, string> = {
+	search: "Search", read: "Read", synthesis: "Synthesize", verification: "Verify",
+};
+
+function researchCommand(text: string): ResearchProgress["command"] | undefined {
+	const match = /^\/(lit|deepresearch)(?=\s|$)/u.exec(text.trimStart());
+	return match?.[1] as ResearchProgress["command"] | undefined;
+}
+
+function researchToolStage(toolName: string, args: unknown): ResearchStage | undefined {
+	if (["alpha_search", "hypatia_science_database_search", "web_search"].includes(toolName)) return "search";
+	if (["alpha_get_paper", "fetch_content", "get_search_content", "document_parse", "read"].includes(toolName)) return "read";
+	if (toolName === "subagent" && isRecord(args) && ["auditor", "critic"].includes(String(args.agent))) return "verification";
+	return undefined;
+}
+
+function sourceKeys(value: unknown, callId: string): string[] {
+	if (!isRecord(value)) return [];
+	const groups = [value, ...["semantic", "keyword", "agentic"].map((key) => value[key]).filter(isRecord)];
+	const keys: string[] = [];
+	for (const group of groups) {
+		if (!Array.isArray(group.results)) continue;
+		for (const [index, item] of group.results.entries()) {
+			if (!isRecord(item)) continue;
+			const stable = [item.doi, item.arxivId, item.arxiv_id, item.pmid, item.pmcid, item.title, item.url, item.openalexId, item.paperId, item.id]
+				.find((candidate) => (typeof candidate === "string" && candidate.trim()) || (typeof candidate === "number" && Number.isFinite(candidate)));
+			keys.push(stable === undefined ? `${callId}:${index}` : String(stable).trim().toLocaleLowerCase());
+		}
+	}
+	return keys;
+}
+
+function researchStageLine(progress: ResearchProgress, activeStage: ResearchStage | undefined, theme: Theme): string {
+	return (["search", "read", "synthesis", "verification"] as const).map((stage) => {
+		const label = RESEARCH_STAGE_LABELS[stage];
+		if (stage === activeStage) return theme.fg("accent", `◌ ${label}`);
+		if (progress.completed.has(stage)) return theme.fg("success", `✓ ${label}`);
+		return theme.fg("dim", `· ${label}`);
+	}).join(theme.fg("dim", "  ›  "));
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -184,29 +238,120 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 	let pendingFinish = false, liveWidgetVisible = false;
 	let operations: Operation[] = [];
 	let activeToolOperations = new Map<string, Operation>();
+	let pendingResearchCommand: ResearchProgress["command"] | undefined;
+	let research: ResearchProgress | undefined;
+	let activeResearchStage: ResearchStage | undefined;
+	let unsubscribeResearchEvents: Array<() => void> = [];
+	let requestLiveRender: (() => void) | undefined;
 	const MAX_OPERATIONS = 40;
 	const setLiveWidget = (show: boolean): void => {
-		if (!context || context.mode !== "tui" || !context.hasUI || liveWidgetVisible === show) return;
+		if (!context || context.mode !== "tui" || !context.hasUI) return;
+		if (liveWidgetVisible === show) { if (show) requestLiveRender?.(); return; }
 		liveWidgetVisible = show;
-		if (!show) { context.ui.setWidget(LIVE_WIDGET, undefined); return; }
-		context.ui.setWidget(LIVE_WIDGET, (_tui, initialTheme) => ({
-			invalidate() {},
-			render(width: number): string[] {
-				if (width <= 0 || startedAt === undefined) return [];
-				const activeTheme = context?.ui.theme ?? initialTheme;
-				const activeOperations = [...activeToolOperations.values()];
-				const labels = [...new Set(activeOperations.map((item) => item.label))].slice(-MAX_LIVE_LABELS);
-				const activity = activeOperations.length ? activeToolStage(activeOperations) : phase;
-				const toolsText = activeOperations.length
-					? `${activeOperations.length} active tool${activeOperations.length === 1 ? "" : "s"}`
-					: toolCount ? `${toolCount} operation${toolCount === 1 ? "" : "s"}` : "";
-				const issueText = issues ? ` · ${issues} issue${issues === 1 ? "" : "s"}` : "";
-				const detail = labels.length ? ` · ${labels.join(" · ")}` : "";
-				const count = toolsText ? ` · ${toolsText}` : "";
-				const text = truncateToWidth(`${activity}${count}${detail}${issueText}`, Math.max(0, width - 2), "…");
-				return new Text(activeTheme.fg(issues ? "warning" : "accent", text), 1, 0).render(width);
-			},
-		}), { placement: "aboveEditor" });
+		if (!show) { requestLiveRender = undefined; context.ui.setWidget(LIVE_WIDGET, undefined); return; }
+		context.ui.setWidget(LIVE_WIDGET, (tui, initialTheme) => {
+			requestLiveRender = () => tui.requestRender();
+			return {
+				invalidate() {},
+				render(width: number): string[] {
+					if (width <= 0 || startedAt === undefined) return [];
+					const activeTheme = context?.ui.theme ?? initialTheme;
+					const activeOperations = [...activeToolOperations.values()];
+					if (research) {
+						const active = [...research.activeTools.values(), ...research.delegatedStages.values()];
+						const stage = active.includes("verification") || research.verification.size ? "verification" : active.includes("read") ? "read" : active.includes("search") ? "search" : activeResearchStage;
+						const title = `${research.command === "lit" ? "/lit" : "/deepresearch"} · ${research.sources.size} parent-visible sources${issues ? ` · ${issues} issue${issues === 1 ? "" : "s"}` : ""}`;
+						return [
+							new Text(activeTheme.fg("accent", truncateToWidth(title, width, "…")), 1, 0).render(width)[0] ?? "",
+							new Text(truncateToWidth(researchStageLine(research, stage, activeTheme), width, "…"), 1, 0).render(width)[0] ?? "",
+						];
+					}
+					const labels = [...new Set(activeOperations.map((item) => item.label))].slice(-MAX_LIVE_LABELS);
+					const activity = activeOperations.length ? activeToolStage(activeOperations) : phase;
+					const toolsText = activeOperations.length
+						? `${activeOperations.length} active tool${activeOperations.length === 1 ? "" : "s"}`
+						: toolCount ? `${toolCount} operation${toolCount === 1 ? "" : "s"}` : "";
+					const issueText = issues ? ` · ${issues} issue${issues === 1 ? "" : "s"}` : "";
+					const detail = labels.length ? ` · ${labels.join(" · ")}` : "";
+					const count = toolsText ? ` · ${toolsText}` : "";
+					const text = truncateToWidth(`${activity}${count}${detail}${issueText}`, Math.max(0, width - 2), "…");
+					return new Text(activeTheme.fg(issues ? "warning" : "accent", text), 1, 0).render(width);
+				},
+			};
+		}, { placement: "aboveEditor" });
+	};
+	const observeVerification = (agent: unknown, key: string, runId?: string): void => {
+		if (!research || !["auditor", "critic"].includes(String(agent))) return;
+		research.verification.add(key);
+		if (runId) research.verificationRuns.set(runId, key);
+		if (activeResearchStage === "synthesis") research.completed.add("synthesis");
+		activeResearchStage = "verification";
+		setLiveWidget(true);
+	};
+	const observeResearchEvents = (): void => {
+		for (const unsubscribe of unsubscribeResearchEvents) unsubscribe();
+		unsubscribeResearchEvents = [
+			pi.events.on(SUBAGENT_DELEGATION_REQUEST_EVENT, (event) => {
+				if (isRecord(event) && typeof event.requestId === "string") observeVerification(event.agent, event.requestId);
+			}),
+			pi.events.on(SUBAGENT_DELEGATION_RESPONSE_EVENT, (event) => {
+				if (!isRecord(event) || !research?.verification.delete(String(event.requestId ?? ""))) return;
+				if (event.status === "completed") research.completed.add("verification");
+				if (!research.verification.size) activeResearchStage = undefined;
+				setLiveWidget(true);
+			}),
+			pi.events.on(SUBAGENT_DELEGATION_CANCEL_EVENT, (event) => {
+				if (!isRecord(event) || !research?.verification.delete(String(event.requestId ?? ""))) return;
+				if (!research.verification.size) activeResearchStage = undefined;
+				setLiveWidget(true);
+			}),
+			pi.events.on("subagent:child-status", (event) => {
+				if (!isRecord(event)) return;
+				const runId = typeof event.runId === "string" ? event.runId : "";
+				const childId = typeof event.childId === "string" ? event.childId : "";
+				if (!runId || !childId) return;
+				const key = `child:${runId}:${childId}`;
+				if (event.status === "started") observeVerification(event.agent, key, typeof event.childRunId === "string" ? event.childRunId : undefined);
+				else if (event.status === "stopped" && research?.verification.delete(key)) {
+					const childRunId = typeof event.childRunId === "string" ? event.childRunId : undefined;
+					if (childRunId) research.verificationRuns.delete(childRunId);
+					if (!research.verification.size) activeResearchStage = undefined;
+					setLiveWidget(true);
+				}
+			}),
+			pi.events.on("hypatia:research-agent-activity", (event) => {
+				if (!research || !Array.isArray(event)) return;
+				const next = new Map<string, ResearchStage>();
+				for (const row of event) {
+					if (!isRecord(row) || typeof row.id !== "string" || typeof row.currentTool !== "string") continue;
+					const stage = researchToolStage(row.currentTool, undefined);
+					if (stage === "search" || stage === "read") next.set(row.id, stage);
+				}
+				for (const [id, stage] of research.delegatedStages) {
+					if (next.get(id) !== stage && ![...next.values()].includes(stage)) {
+						research.completed.add(stage);
+						research.seenEvidence = true;
+					}
+				}
+				research.delegatedStages = next;
+				setLiveWidget(true);
+			}),
+			pi.events.on("subagent:async-started", (event) => {
+				if (!isRecord(event) || typeof event.id !== "string") return;
+				observeVerification(event.agent, `async:${event.id}`, event.id);
+			}),
+			pi.events.on("subagent:async-complete", (event) => {
+				if (!isRecord(event) || !research) return;
+				const runId = typeof event.id === "string" ? event.id : typeof event.runId === "string" ? event.runId : "";
+				const key = research.verificationRuns.get(runId);
+				if (!key) return;
+				research.verificationRuns.delete(runId);
+				research.verification.delete(key);
+				if (event.state === "complete") research.completed.add("verification");
+				if (!research.verification.size) activeResearchStage = undefined;
+				setLiveWidget(true);
+			}),
+		];
 	};
 	const finish = (busy: boolean, working: boolean): void => {
 		if (!pendingFinish || busy || working || startedAt === undefined) return;
@@ -223,6 +368,8 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 			pi.appendEntry(TURN_ENTRY, summary);
 		}
 		startedAt = undefined;
+		research = undefined;
+		activeResearchStage = undefined;
 	};
 
 	pi.registerEntryRenderer(TURN_ENTRY, (entry, options, theme) => {
@@ -244,23 +391,38 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 
 	pi.on("session_start", (_event, ctx) => {
 		context = ctx;
-		startedAt = undefined; pendingFinish = false; liveWidgetVisible = false;
+		startedAt = undefined; pendingFinish = false; liveWidgetVisible = false; pendingResearchCommand = undefined; research = undefined; activeResearchStage = undefined;
+		requestLiveRender = undefined;
+		for (const unsubscribe of unsubscribeResearchEvents) unsubscribe();
+		unsubscribeResearchEvents = [];
 		operations = []; activeToolOperations.clear(); toolCount = 0; issues = 0; omitted = 0; turnError = undefined;
 		if (ctx.mode === "tui" && ctx.hasUI) ctx.ui.setWidget(LIVE_WIDGET, undefined);
+	});
+	pi.on("input", (event) => {
+		if (!event.streamingBehavior) pendingResearchCommand = researchCommand(event.text);
 	});
 	pi.on("agent_start", () => {
 		if (context?.mode !== "tui" || !context.hasUI) return;
 		if (startedAt === undefined) {
 			startedAt = Date.now(); outcome = "completed";
 				operations = []; activeToolOperations.clear(); toolCount = 0; issues = 0; omitted = 0; turnError = undefined;
+				research = pendingResearchCommand ? {
+				command: pendingResearchCommand, completed: new Set(), activeTools: new Map(), asyncVerificationLaunches: new Set(), sources: new Set(), verification: new Set(), verificationRuns: new Map(), delegatedStages: new Map(), seenEvidence: false,
+			} : undefined;
+			activeResearchStage = undefined;
 		}
+		pendingResearchCommand = undefined;
+		if (research) observeResearchEvents();
 		pendingFinish = false; phase = "Thinking"; setLiveWidget(true);
 	});
 	pi.on("message_update", (event) => {
 		if (startedAt === undefined) return;
 		const type = event.assistantMessageEvent.type;
 		if (type === "thinking_start" || type === "thinking_delta") phase = "Thinking";
-		else if (type === "text_start" || type === "text_delta") phase = "Answering";
+		else if (type === "text_start" || type === "text_delta") {
+			phase = "Answering";
+			if (research?.seenEvidence && !research.activeTools.size && !research.verification.size) activeResearchStage = "synthesis";
+		}
 		else return;
 		setLiveWidget(true);
 	});
@@ -271,6 +433,16 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 			const operation: Operation = { ...described, failed: false };
 			operations.push(operation);
 			activeToolOperations.set(event.toolCallId, operation);
+		const researchStage = researchToolStage(event.toolName, event.args);
+		if (research && researchStage) {
+			research.activeTools.set(event.toolCallId, researchStage);
+			if (researchStage === "verification") {
+				research.verification.add(event.toolCallId);
+				if (isRecord(event.args) && event.args.async === true) research.asyncVerificationLaunches.add(event.toolCallId);
+				if (activeResearchStage === "synthesis") research.completed.add("synthesis");
+			}
+			activeResearchStage = researchStage;
+		}
 			if (operations.length > MAX_OPERATIONS) {
 				operations.shift(); omitted += 1;
 				const retained = new Set(operations);
@@ -288,6 +460,25 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 				const detail = errorDetail(event.result);
 				if (detail && operation) operation.error = detail;
 			} else if (operation) operation.failed = false;
+		if (research) {
+			const stage = research.activeTools.get(event.toolCallId);
+			if (stage) {
+				research.activeTools.delete(event.toolCallId);
+				if (stage === "verification") {
+					research.verification.delete(event.toolCallId);
+					if (!event.isError && !research.asyncVerificationLaunches.delete(event.toolCallId)) research.completed.add("verification");
+				}
+				if (!event.isError && stage !== "verification") {
+					research.completed.add(stage);
+					research.seenEvidence = true;
+				}
+				if (stage === "search" && !event.isError) {
+					const details = isRecord(event.result) ? event.result.details : undefined;
+					for (const key of sourceKeys(details, event.toolCallId)) research.sources.add(key);
+				}
+				if (!research.activeTools.size && !research.verification.size) activeResearchStage = undefined;
+			}
+		}
 		if (activeToolOperations.size === 0) phase = "Thinking";
 		setLiveWidget(true);
 	});
@@ -295,6 +486,7 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 	pi.on("agent_end", (event) => {
 		if (startedAt === undefined) return;
 		phase = "Finishing";
+		if (research && activeResearchStage === "synthesis") research.completed.add("synthesis");
 		setLiveWidget(true);
 		const lastAssistant = [...event.messages].reverse().find((message) => message.role === "assistant");
 		if (lastAssistant?.role === "assistant" && lastAssistant.stopReason === "aborted") outcome = "aborted";
@@ -309,6 +501,9 @@ export function registerChatTurnOutput(pi: ExtensionAPI): { setActivity(busy: bo
 	});
 	pi.on("session_shutdown", () => {
 		if (context?.mode === "tui" && context.hasUI) context.ui.setWidget(LIVE_WIDGET, undefined);
+		requestLiveRender = undefined;
+		for (const unsubscribe of unsubscribeResearchEvents) unsubscribe();
+		unsubscribeResearchEvents = [];
 		context = undefined; liveWidgetVisible = false;
 	});
 	return { setActivity: (busy, working) => finish(busy, working) };

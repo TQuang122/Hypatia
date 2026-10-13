@@ -21,6 +21,13 @@ type ScienceDatabaseSearchParams = {
 	source: ScienceDatabaseSource;
 };
 
+type LayaAdvisoryParams = {
+	candidates: Array<{ abstract?: string; candidateId: string; title: string }>;
+	mode?: string;
+	query: string;
+	source: ScienceDatabaseSource;
+};
+
 const CROSSREF_BASE = "https://api.crossref.org";
 const EUROPE_PMC_SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search";
 const SEMANTIC_SCHOLAR_BASE = "https://api.semanticscholar.org/graph/v1";
@@ -443,19 +450,76 @@ async function scienceDatabaseSearch(params: ScienceDatabaseSearchParams): Promi
 	return searchEuropePmc(params);
 }
 
+function registerLayaAdvisoryTool(pi: ExtensionAPI): void {
+	pi.registerTool({
+		name: "hypatia_laya_advisory",
+		...createPaperSearchRenderers("laya"),
+		label: "Laya Paper Advisory",
+		description:
+			"On explicit request, score an existing topical literature candidate list with the local loopback Laya service and return a separate suggested order. The original retrieval order is preserved; this tool never changes the source search result.",
+		promptSnippet: "Use only when the user explicitly asks to inspect Laya's advisory scores for papers already returned by science search.",
+		promptGuidelines: [
+			"Call this tool only on explicit user request; the science-database search does not call Laya automatically.",
+			"Copy the exact query, source, optional operation mode, stable candidate IDs, titles, and available abstracts from the existing search result, preserving source order.",
+			"The returned `layaSuggestedOrder` is advisory; use the source search result as primary and do not treat Laya scores as evidence or calibrated confidence.",
+		],
+		annotations: {
+			readOnlyHint: true,
+			destructiveHint: false,
+			idempotentHint: true,
+			openWorldHint: false,
+		},
+		parameters: Type.Object({
+			source: SCIENCE_DATABASE_SOURCE_SCHEMA,
+			query: Type.String({ description: "The exact topical query used for the source search." }),
+			mode: Type.Optional(Type.String({
+				description: "Copy the source result's operation mode when present. Exact lookup and full-text modes are rejected.",
+			})),
+			candidates: Type.Array(Type.Object({
+				candidateId: Type.String({ description: "Stable ID copied from each source result." }),
+				title: Type.String(),
+				abstract: Type.Optional(Type.String()),
+			}), {
+				minItems: 2,
+				maxItems: MAX_LIMIT,
+				description: "Two to twenty existing topical search results, copied in original source order.",
+			}),
+		}),
+		async execute(_toolCallId, params) {
+			const input = params as LayaAdvisoryParams;
+			const result = {
+				schema: "hypatia.layaAdvisory.v1",
+				source: input.source,
+				query: input.query,
+				...(input.mode ? { mode: input.mode } : {}),
+				returned: input.candidates.length,
+				results: input.candidates,
+			};
+			const advisory = await rerankScienceDatabaseResults(
+				{ source: input.source, query: input.query },
+				result,
+			);
+			return {
+				content: [{ type: "text", text: formatText(advisory) }],
+				details: advisory,
+			};
+		},
+	});
+}
+
 export function registerScienceDatabaseTools(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "hypatia_science_database_search",
 		...createPaperSearchRenderers("database"),
 		label: "Science Database Search",
 		description:
-			"Search read-only scholarly literature databases: Semantic Scholar (citation-sorted by default), OpenAlex, arXiv ID lookup, PubMed (search, metadata, ID conversion, related articles, citation matching, copyright, PMC full-text routing), Europe PMC (metadata and open-access full-text sections), bioRxiv/medRxiv preprints, Crossref DOI metadata, CORE open-access full-text aggregator, DOAB open-access books, and OA recovery (legal open-access copy for a DOI via Unpaywall, Europe PMC, then CORE). When HYPATIA_LAYA_ENABLED=1, eligible topical searches can be reranked by a local loopback Laya service; exact lookups and full-text retrieval are not reranked. Returns stable identifiers, bounded section snippets when requested, source URLs, and endpoint provenance.",
+			"Search read-only scholarly literature databases: Semantic Scholar (citation-sorted by default), OpenAlex, arXiv ID lookup, PubMed (search, metadata, ID conversion, related articles, citation matching, copyright, PMC full-text routing), Europe PMC (metadata and open-access full-text sections), bioRxiv/medRxiv preprints, Crossref DOI metadata, CORE open-access full-text aggregator, DOAB open-access books, and OA recovery (legal open-access copy for a DOI via Unpaywall, Europe PMC, then CORE). Search results always retain source order. For explicit Laya advice on an existing topical result set, call `hypatia_laya_advisory`; it returns a separate suggestion and never changes these results. Returns stable identifiers, bounded section snippets when requested, source URLs, and endpoint provenance.",
 		promptSnippet: "Search Semantic Scholar, OpenAlex, PubMed, Europe PMC metadata and open-access full-text sections, bioRxiv/medRxiv, Crossref, CORE, or DOAB, or look up arXiv IDs, for source-backed literature evidence.",
 		promptGuidelines: [
 			"Use hypatia_science_database_search to find and pin down papers before making source-backed claims: Semantic Scholar for general discovery (prefer the default citation-count sort, which surfaces seminal work and is the least rate-limited; use sort=pub_date only when recency matters); OpenAlex for cross-discipline works (prefix the query with `semantic:` for embedding search that finds conceptual and recent matches keyword search misses), citation graphs, authors, venues, and OA status; arXiv only to look up known arXiv IDs (it has no topic search); PubMed for biomedical search, PMID metadata, PMID/PMCID/DOI conversion, related articles, citation matching, and copyright checks; Europe PMC for open-access full-text section snippets; bioRxiv/medRxiv for preprint DOI lookup, date/category windows, and published-preprint links; Crossref for DOI metadata; CORE for open-access full text (set CORE_API_KEY for download URLs and full text; without a key results are metadata-only, and `fulltext_only=true` keeps only rows with full text); DOAB for open-access academic books (in the humanities the book, not the article, is the unit of publication); OA recovery (`source: oa` with a DOI) when full text is paywalled — it finds a legal open-access copy via Unpaywall, Europe PMC, then CORE, and discloses where the text actually came from so you cite the version read.",
 			"Exact literature modes: `openalex_search_works`, `openalex_get_work`, `openalex_citations`, `openalex_references`, `openalex_search_authors`, `openalex_get_author`, `openalex_venue_info`, and `arxiv_get_papers` (the arxiv source also accepts bare IDs such as 2309.08600). PubMed accepts `pmid:`, `convert:`, `related:`, `fulltext:`, `copyright:`, and `citation` prefixes; Europe PMC accepts `fulltext:`/`sections:` with a PMCID or PMID. CORE accepts `doi:` and `fulltext_only=true`; DOAB accepts `title:`, `isbn:`, `doi:`, and `author:` prefixes.",
 			"Preserve returned PMIDs, PMCIDs, DOIs, arXiv IDs, Semantic Scholar paper IDs, preprint DOIs, OpenAlex W/A/S IDs, author ORCIDs, citation/reference counts, OA status, Europe PMC full-text statuses and section inventories, source URLs, and endpoint provenance in research artifacts and answers.",
-			"If `layaStatus.state` is `reranked`, use the returned order as a local relevance aid, not as evidence for a claim; original ranks remain in `layaOriginalRank`. If the status is `unavailable`, results retain their source order.",
+			"Keep the order returned by this search as the primary source order. Call `hypatia_laya_advisory` only on explicit user request; it returns advisory scores and a separate suggested order without replacing or filtering these results.",
 			"Treat database summaries as retrieval evidence, then verify decisive claims against the full paper when needed.",
 		],
 		// Some models fill omitted optional fields with "null", which fails validation.
@@ -484,13 +548,13 @@ export function registerScienceDatabaseTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params) {
 			const searchParams = params as ScienceDatabaseSearchParams;
 			const result = await scienceDatabaseSearch(searchParams);
-			const delivered = await rerankScienceDatabaseResults(searchParams, result);
 			return {
-				content: [{ type: "text", text: formatText(delivered) }],
-				details: delivered,
+				content: [{ type: "text", text: formatText(result) }],
+				details: result,
 			};
 		},
 	});
+	registerLayaAdvisoryTool(pi);
 }
 
 export const testableScienceDatabases = {

@@ -373,14 +373,39 @@ Workarounds:
   }
 
   New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+  $hptPath = Join-Path $installBinDir "hpt.cmd"
+  if (Test-Path -LiteralPath $hptPath) {
+    $isHypatiaHptShim = $false
+    if (Test-Path -LiteralPath $hptPath -PathType Leaf) {
+      $hptContent = Get-Content -LiteralPath $hptPath -Raw
+      $hasManagedMarker = $hptContent.Contains("REM Managed by Hypatia standalone installer.")
+      $legacyPrefix = "CALL `"$installRoot\hypatia-"
+      $legacySuffix = "\hypatia.cmd`" %*"
+      $isLegacyHypatiaShim =
+        $hptContent.IndexOf($legacyPrefix, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -and
+        $hptContent.IndexOf($legacySuffix, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+      $isHypatiaHptShim = $hasManagedMarker -or $isLegacyHypatiaShim
+    }
+    if (-not $isHypatiaHptShim) {
+      throw "An existing hpt command at '$hptPath' is not a Hypatia launcher; leaving it untouched."
+    }
+  }
+
   $stagedBinDir = Join-Path $shortStagingRoot "candidate-bin"
   $stagedBinPhysicalDir = Join-Path $stagingPhysicalRoot "candidate-bin"
   New-Item -ItemType Directory -Path $stagedBinDir -Force | Out-Null
   $shimCandidate = Join-Path $stagedBinDir "hypatia.cmd"
   @"
 @echo off
+REM Managed by Hypatia standalone installer.
 CALL "$bundleDir\hypatia.cmd" %*
 "@ | Set-Content -Path $shimCandidate -Encoding ASCII
+  $hptShimCandidate = Join-Path $stagedBinDir "hpt.cmd"
+  @"
+@echo off
+REM Managed by Hypatia standalone installer.
+CALL "$bundleDir\hypatia.cmd" %*
+"@ | Set-Content -Path $hptShimCandidate -Encoding ASCII
 
   $backupBundleDir = Join-Path $stagingPhysicalRoot "previous-bundle"
   $backupBundleShortDir = Join-Path $shortStagingRoot "previous-bundle"

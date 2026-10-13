@@ -1,14 +1,21 @@
 <p align="center">
-  <a href="https://github.com/TQuang122/hypatia">
-    <img src="assets/hypatia-readme-banner-console.png" alt="Hypatia — open source AI research, made traceable" width="800" />
-  </a>
+  <img src="assets/hypatia-readme-logo.png" alt="Hypatia logo" width="120" />
 </p>
-<p align="center"><strong>Research-First Agent Shell for Scientific Rigor.</strong></p>
+
+<h1 align="center">Hypatia</h1>
+<p align="center"><strong>Research, made traceable.</strong><br />Open-source AI research agent for scientific work.</p>
+
 <p align="center">
-  <a href="https://tquang122.github.io/hypatia/"><img alt="Documentation" src="https://img.shields.io/badge/docs-read%20the%20docs-0d9668?style=for-the-badge&logo=readthedocs&logoColor=white" /></a>&nbsp;
-  <a href="https://github.com/TQuang122/hypatia/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-4b5563?style=for-the-badge" /></a>&nbsp;
+  <a href="https://tquang122.github.io/hypatia/"><img alt="Documentation" src="https://img.shields.io/badge/docs-read%20the%20docs-0d9668?style=for-the-badge&logo=readthedocs&logoColor=white" /></a>
+  <a href="https://github.com/TQuang122/hypatia/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-4b5563?style=for-the-badge" /></a>
   <a href="https://deepwiki.com/TQuang122/hypatia"><img alt="Ask DeepWiki" src="https://img.shields.io/badge/Ask-DeepWiki-2563eb?style=for-the-badge" /></a>
 </p>
+
+<p align="center">
+  <img src="assets/hypatia-readme-banner-console.png" alt="Hypatia research workflows in the terminal" width="960" />
+</p>
+
+Hypatia extends Pi with source-backed workflows to discover, compare, verify, and reproduce research, with reports and provenance saved to your workspace.
 
 ## Quick start
 
@@ -20,88 +27,39 @@ hypatia setup
 hypatia "what do we know about scaling laws"
 ```
 
-For standalone installers, pinned versions, or skills-only installs, see the [installation guide](https://tquang122.github.io/hypatia/docs/getting-started/installation/). The [setup guide](https://tquang122.github.io/hypatia/docs/getting-started/setup/) covers provider sign-in, Azure OpenAI, local models, and editors.
+Use `hpt` as a shorter alias. See the [installation guide](https://tquang122.github.io/hypatia/docs/getting-started/installation/) for standalone installers, pinned versions, and skills-only setup. The [setup guide](https://tquang122.github.io/hypatia/docs/getting-started/setup/) covers providers and local models.
 
-## Use
+## Research workflows
 
-```bash
-hypatia lit "RLHF alternatives"
-hypatia deepresearch "mechanistic interpretability"
-hypatia --codemode deepresearch "compare mechanistic interpretability methods"
-```
-
-`--codemode` adds Pi Codemode for one session while keeping the default tools. It is off by default. To keep it available in every session, add `"defaultTools": ["+codemode"]` to `~/.hypatia/agent/settings.json`.
-
-| Workflow | What it does |
+| Goal | Commands |
 | --- | --- |
-| `/deepresearch <topic>` | Planned investigation with parallel evidence scouts and citation checks |
-| `/lit <topic or lab>` | Literature review: consensus, disagreements, open questions |
-| `/review <paper or draft>` | Critique with severity levels and a revision plan |
-| `/audit <paper>` | Paper claims compared with its public code |
-| `/replicate <paper>` | Replication plan; runs only after you choose an environment |
-| `/recipe <task>` | Ranked ML training recipes with datasets and code |
-| `/compare <topic>` | Source comparison matrix |
-| `/draft <topic>` | Paper-style draft from research findings |
-| `/idea <goal>` | Generate bounded research ideas with Hypatia-native Idea Forge |
-| `/autoresearch <idea>` | Bounded experiment loop against a benchmark |
-| `/summarize <source>` | Summary of a paper, repository, or PDF |
-| `/sources` | Browse citations from the latest answer; open or copy source URLs |
+| Find and synthesize literature | `/lit`, `/deepresearch` |
+| Compare sources or review a paper | `/compare`, `/review`, `/audit` |
+| Plan replication or training | `/replicate`, `/recipe` |
+| Draft or explore research ideas | `/draft`, `/idea` |
+| Run a bounded experiment | `/autoresearch`, `/experiments` |
 
-Results are saved to `outputs/` (drafts to `papers/`). `/lit`, `/deepresearch`, and `/recipe` also write a provenance file listing the sources used and what was verified.
+Reports and provenance are saved in `outputs/`; paper-style drafts go in `papers/`. Use `/outputs` to browse them.
 
-Run `/outputs` in chat to browse **Reports**, **Provenance**, **Drafts**, and **Other artifacts**, newest first within each group. Choosing a Markdown report opens it directly in the TUI. Use arrows/Page Up/Page Down to scroll, `/` or `Ctrl+F` to search, `n`/`N` for the next/previous matching row, `p` for the same-name report/provenance beside the current file, and `c` to copy its absolute path. `Esc` returns to the file list. Text previews are limited to 2 MiB; PDFs and larger files offer path copying and an explicit **Read in chat** action. Viewing and copying preserve the composer; **Read in chat** (or `r` in the reader) prefills a quoted file path for you to review and submit.
-
-Use `/compare-provenance` in the chat TUI to compare the recorded verification and source-coverage fields from two completed runs. It compares metadata only and does not rank the runs.
-
-Use `/sources` to browse citations from the latest assistant answer in a scrollable panel. Press `/` to filter, `Enter` to open the selected source, `c` to copy its URL, and `Esc` to close. Verification status appears only when the answer states it explicitly. In long fullscreen sessions, Hypatia also suggests Pi's transcript search shortcut; short terminals compact the header and hide the welcome art or idle tip to preserve reading space.
-
-## Persistent experiments
-
-Use `/autoresearch <idea>` or `/experiments create <goal>` to prepare an approved, bounded benchmark run. Hypatia records observed metrics, code snapshots, logs, and provenance; runs can pause and resume. Experiment trees compare related candidates while keeping their work separate from your checkout.
-
-The [AutoResearch guide](https://tquang122.github.io/hypatia/docs/workflows/autoresearch/) covers benchmark contracts, metric formats, budgets, supported platforms, and experiment trees. See its [independent review gates](https://tquang122.github.io/hypatia/docs/workflows/autoresearch/#independent-review-gates) section for critic and auditor checks.
-
-### Idea Forge generation
-
-Use `/idea <research goal>` for a bounded proposal from Hypatia's native Idea Forge. Proposals and citations remain unverified until you check them; benchmark execution requires a separate approval. Read about [Idea Forge generation](https://tquang122.github.io/hypatia/docs/workflows/autoresearch/#idea-forge-generation) for model panels, limits, and saved receipts.
+The built-in `research-diagrams` skill guides source-grounded Mermaid diagrams for chat and saved research artifacts.
 
 ## Chat TUI
 
-Hypatia opens in fullscreen with the Graphite theme. Use `/settings` to change the layout or theme, and `/reload` to apply theme changes.
-
 <p align="center">
-  <img src="assets/hypatia-readme-ban.png" alt="Preview of Hypatia's fullscreen research chat interface" width="800" />
-  <br />
-  <em>Research workflows in Hypatia's fullscreen chat.</em>
+  <img src="assets/hypatia-readme-ban.png" alt="Hypatia fullscreen research chat" width="850" />
 </p>
 
-- **Quick research commands:** after the welcome logo is dismissed, a compact list of `/lit`, `/deepresearch`, `/idea`, `/autoresearch`, and related commands appears above the composer. It stays visible while you draft and clears when you send. Type `/` for autocomplete or use `/help` to choose a command to prefill.
-- **Command guide:** `/help` opens a searchable, grouped panel with a short detail view. Use arrows to browse, `/` to filter, Enter to prefill the selected command, and Esc to close; selection never submits it.
-- **Input:** `Enter` sends, `Shift+Enter` adds a line, and `Alt+Enter` queues a follow-up. Paste images with the configured shortcut; `/hotkeys` lists bindings.
-- **Activity:** The footer shows the active model and status. Press `Ctrl+O` for tool details or `F2` to review warnings.
-- **Research:** Use `/outputs` to browse reports and provenance. Markdown previews support scrolling and search; paper and code search results expand with `Ctrl+O`.
+The fullscreen chat includes searchable `/help`, citation browsing with `/sources`, and research-agent progress above the composer. The pinned prompt uses a subtle theme-matched background and a muted divider on taller terminals. When scrolled up, Pi's single built-in `↓ Jump to latest message · Esc` control returns to the newest output. In fullscreen mode, `Esc` is assigned to this scroll action and takes precedence over Pi's normal interrupt shortcut. Clicking the control preserves any draft. Use `/outputs` to open reports; `/compact` and summarized `/tree` navigation preserve research context.
 
-## Per-role model routing
+Configure per-role model, fallback, and thinking choices with `/model-routes` or `hypatia model routes`. See the [model routing guide](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#subagent-model-overrides).
 
-Active subagent model and progress appear in the footer only while agents are running.
+## Sources and evaluation
 
-Research agents inherit the main model unless you configure routes. Use `/model-routes` in the TUI or `hypatia model routes` in a shell to set a primary model and ordered launch fallbacks; `hypatia model routes --json` prints the effective configuration. See [Subagent model overrides](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#subagent-model-overrides) for JSON settings, precedence, migration, fallback behavior, and usage reporting.
+Hypatia searches scholarly databases, public code, the web, and Hugging Face, and reads local PDFs and documents. It can also recover legal open-access copies for paywalled papers. See the [tool documentation](https://tquang122.github.io/hypatia/docs/reference/package-stack/).
 
-## Evaluation
+Optional local Laya advice is off by default. When enabled, `hypatia_laya_advisory` returns scores and a separate suggested order without changing source results. It accepts loopback services only; see the [Laya setup and limits](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#optional-local-laya-advisory).
 
-The repository includes the fixed research eval plus score adapters for ScholarQA-CS2/AstaBench, DeepResearch Bench FACT, and SciCoQA. The runner accepts local question manifests; score adapters consume local outputs from the official evaluators and do not fetch gated data or make judge calls. See [`evals/README.md`](evals/README.md) for input schemas, pinned sources, and scoring commands.
-
-## Sources
-
-Hypatia searches alphaXiv, Semantic Scholar, OpenAlex, arXiv, PubMed, Europe PMC, bioRxiv, medRxiv, Crossref, CORE, DOAB, public GitHub code, the web, and Hugging Face, recovers legal open-access copies for paywalled DOIs, and reads local PDFs and documents. Free `OPENALEX_API_KEY`, `SEMANTIC_SCHOLAR_API_KEY`, and `CORE_API_KEY` keys avoid the shared rate limits; `UNPAYWALL_EMAIL` enables the Unpaywall step of OA recovery. It runs on stock [Pi](https://github.com/earendil-works/pi) with five research agents: evidence-scout, scribe, auditor, critic, and reviser.
-
-### Optional local Laya reranking
-
-Set `HYPATIA_LAYA_ENABLED=1` to rerank topical paper-search results with a separate local `laya-serve` process. It only reorders papers already returned by the selected database; it does not add or discard candidates. Exact identifier/citation lookups and full-text retrieval keep their source order. If Laya is unavailable, Hypatia keeps that order and shows a status message. The feature is off by default and only accepts a loopback service URL. See the [configuration guide](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#optional-local-laya-reranking) for service setup and limits.
-
-## Telemetry
-
-Hypatia sends anonymous usage data to PostHog only if you opt in with `HYPATIA_TELEMETRY=1` and your own `HYPATIA_POSTHOG_KEY`: commands, workflows, tools, models, token counts, and errors with their messages and stack traces (your home folder shown as `~`). It never sends prompts, model output, paper content, or tool arguments. Telemetry is off by default. [What is sent](https://tquang122.github.io/hypatia/docs/getting-started/configuration/#telemetry)
+Benchmark details and score adapters are documented in [evals/README.md](evals/README.md). Telemetry is off unless you opt in with `HYPATIA_TELEMETRY=1` and your own PostHog key; prompts, model output, paper text, and tool arguments are excluded.
 
 ## Contributing
 
@@ -112,6 +70,4 @@ npm install
 npm test
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-[Docs](https://tquang122.github.io/hypatia/docs/) · [Release notes](RELEASES.md) · [MIT License](LICENSE)
+See [CONTRIBUTING.md](CONTRIBUTING.md) · [Documentation](https://tquang122.github.io/hypatia/) · [Release notes](RELEASES.md) · [MIT License](LICENSE)

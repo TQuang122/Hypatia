@@ -23,15 +23,16 @@ jobs:
         run: |
           irm https://raw.githubusercontent.com/TQuang122/hypatia/main/scripts/install/install.ps1 | iex
 
+          $expectedVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $installRoot = Join-Path $env:LOCALAPPDATA "Programs\hypatia"
-          $bundle = Join-Path $installRoot "hypatia-0.1.1-win32-x64"
+          $bundle = Join-Path $installRoot "hypatia-$expectedVersion-win32-x64"
           $launcher = Join-Path $installRoot "bin\hypatia.cmd"
           if (-not (Test-Path -LiteralPath $launcher)) {
             throw "Windows installer did not create $launcher"
           }
 
           $version = @(& $launcher --version 2>&1)
-          if ($LASTEXITCODE -ne 0 -or $version[-1].Trim() -ne "0.1.1") {
+          if ($LASTEXITCODE -ne 0 -or $version[-1].Trim() -ne $expectedVersion) {
             throw "Installed launcher returned an unexpected version: $($version -join [Environment]::NewLine)"
           }
 

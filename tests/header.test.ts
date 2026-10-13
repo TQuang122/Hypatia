@@ -99,13 +99,14 @@ test("Hypatia H mark owns the accent while duplicate workspace names and UUIDs a
 		bold: (text: string) => text,
 	};
 	const lines = headerFactory(undefined, theme).render(100);
-	assert.match(lines[0]!, /Hypatia 0\.1\.1/);
+	const expectedVersion = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+	assert.ok(lines[0]!.includes(`Hypatia ${expectedVersion}`));
 	assert.match(lines[1]!, /workspaces\/Hypatia/);
 	assert.match(lines[2]!, /session 01a13481/);
 	assert.equal(lines.join("\n").includes(sessionId), false);
 	assert.deepEqual(colors.filter(({ color }) => color === "accent").map(({ text }) => text), ["███ ███", "███████", "███ ███"]);
 	assert.ok(colors.some(({ color, text }) => color === "text" && text === "Hypatia"));
-	assert.ok(colors.some(({ color, text }) => color === "dim" && text === " 0.1.1"));
+	assert.ok(colors.some(({ color, text }) => color === "dim" && text === ` ${expectedVersion}`));
 });
 
 test("Hypatia header only uses universal theme colors", async (t) => {

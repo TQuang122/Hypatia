@@ -6,20 +6,15 @@ GitHub release notes are generated from the matching `## vX.Y.Z` section in this
 
 ## Unreleased
 
-- **Hypatia chat header**: the block H is the sole accent in the full header; a workspace also named Hypatia shows a distinguishing parent path, and UUID sessions use a short label.
-- **Research diagrams skill**: bundled guidance helps produce source-grounded Mermaid diagrams, with compact syntax for Pi's terminal chat and captions for saved research artifacts. No renderer dependency is added.
-- **Scroll-synced transcript navigation**: the fullscreen transcript keeps the relevant earlier user prompt at the top while scrolling through a long answer, hides it while that prompt is visible there, and gives the pinned row a subtle theme-matched background with a muted divider on taller terminals. Pi's single built-in `↓ Jump to latest message · Esc` control returns to the newest output. In fullscreen mode, `Esc` is assigned to this scroll action and takes precedence over Pi's normal interrupt shortcut; clicking preserves any draft.
-- **Laya retrieval advisory**: replace automatic opt-in reranking with an explicitly requested tool that scores existing topical results and returns a separate suggested order; the primary source order stays intact.
-- **Laya evaluation**: the 30-query public SciFact development run scored 0.5777 nDCG@10 versus BM25's 0.8095 and truncated 91 of 600 candidates, so automatic reordering remains disabled.
-- **`hpt` command alias**: launch Hypatia with `hpt` as well as `hypatia`; supported by npm and standalone installers.
-- **Evidence-aware session summaries**: `/compact` and optional `/tree` branch summaries retain research goals, observed source identifiers and artifact paths, explicit evidence states, unresolved questions, and next steps. Collected source references are labeled as observed, not re-verified during summarization.
-- **Collapsible subagent activity panel**: while research agents run, view each role's model, active tool, and elapsed time above the composer; press `Ctrl+Shift+A` to collapse or expand the panel.
-- **Live literature workflow progress**: `/lit` and `/deepresearch` show search, reading, synthesis, and verification stages from observed parent and subagent runtime events, plus distinct source records returned to the parent runtime.
-- **GitHub Copilot model selection**: recommend the newest available Claude Opus model, then Sonnet, then GPT, rather than choosing a weaker model alphabetically.
-- **PubMed consortium metadata**: preserve affiliations attached to collective and study-group authors.
-- **Updated Pi packages**: `pi-subagents` 0.77.0 reduces parent tool context and returns long reports as previews with file paths; `pi-btw` 0.8.0 adds side-chat slash completion and improves slash-command routing.
-- **Setup and OAuth recovery**: canceling model setup now exits before optional packages, alphaXiv sign-in, or preview installation. A browser callback without an authorization code explains how to retry.
-- **Provider error guidance and Python portability**: failed model calls suggest recovery steps for model access, credits, rate limits, context limits, credentials, and outages. Research agents retry `python3` on macOS/Linux when `python` is unavailable.
+No unreleased changes.
+
+## v0.1.2 - 2026-10-13
+
+- **A clearer research chat**: the Hypatia header now keeps the H mark as its sole accent and labels duplicate workspace names and UUID sessions compactly. Fullscreen transcripts keep the relevant prompt in view while scrolling, with Pi's built-in jump-to-latest control. Live subagent activity can be collapsed, and `/lit` and `/deepresearch` show observed workflow stages.
+- **Source-grounded diagrams and summaries**: a built-in `research-diagrams` skill guides compact Mermaid diagrams for terminal chat and evidence-aware artifacts. `/compact` and optional `/tree` summaries retain observed sources, evidence states, unresolved questions, and next steps.
+- **Safer literature guidance**: optional Laya scoring is explicit and advisory; it preserves the provider's source order. The 30-query SciFact development evaluation underperformed BM25 (0.5777 vs. 0.8095 nDCG@10), so automatic reranking remains disabled.
+- **More reliable setup and model recovery**: model setup cancellation exits cleanly; OAuth callbacks without a code and common provider failures now include recovery guidance. Copilot model recommendations prefer available Claude Opus, then Sonnet, then GPT. PubMed keeps affiliations for collective authors.
+- **Installer and workflow improvements**: `hpt` is available as a short CLI alias, with rollback-safe npm and standalone installers. Updated `pi-subagents` and `pi-btw` improve long reports and side-chat command handling; research agents can fall back to `python3` when `python` is unavailable.
 
 ## v0.1.1 - 2026-10-11
 

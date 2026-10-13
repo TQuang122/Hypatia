@@ -7,8 +7,8 @@ test("invalid_grant login failures explain how to recover", () => {
 	const error = new Error("invalid_grant: authorization code rejected");
 	const explained = describeOAuthLoginFailure("anthropic", error);
 	assert.ok(explained instanceof Error);
-	assert.match(explained.message, /stale browser session/i);
-	assert.match(explained.message, /sign out.*private window/i);
+	assert.match(explained.message, /provider rejected this authorization attempt/i);
+	assert.match(explained.message, /sign out.*private browser window/i);
 	assert.match(explained.message, /hypatia model login anthropic/);
 });
 
@@ -21,8 +21,8 @@ test("OpenAI invalid_grant guidance includes the Codex login option", () => {
 test("missing authorization codes explain browser recovery and the Codex login option", () => {
 	const explained = describeOAuthLoginFailure("openai", new Error("Missing authorization code"));
 	assert.ok(explained instanceof Error);
-	assert.match(explained.message, /browser returned without an authorization code/i);
-	assert.match(explained.message, /sign out.*private window/i);
+	assert.match(explained.message, /callback arrived without the code needed/i);
+	assert.match(explained.message, /fresh browser session/i);
 	assert.match(explained.message, /hypatia model login openai-codex/);
 });
 

@@ -865,12 +865,12 @@ export function describeOAuthLoginFailure(providerId: string, error: unknown): u
 	const alternative = providerId === "openai" ? " For ChatGPT sign-in, you can also run `hypatia model login openai-codex`." : "";
 	if (error.message.includes("invalid_grant")) {
 		return new Error(
-			`${error.message}\nThe sign-in was rejected, usually because of a stale browser session. Sign out of the provider's site or use a private window, then run \`hypatia model login ${providerId}\` again.${alternative}`,
+			`${error.message}\nThe provider rejected this authorization attempt. Sign out of its website or retry in a private browser window, then run \`hypatia model login ${providerId}\` again.${alternative}`,
 		);
 	}
 	if (/missing authorization code/i.test(error.message)) {
 		return new Error(
-			`${error.message}\nThe browser returned without an authorization code, often because its session is stale. Sign out of the provider's site or use a private window, then run \`hypatia model login ${providerId}\` again.${alternative}`,
+			`${error.message}\nThe callback arrived without the code needed to finish login. Start a fresh browser session, then run \`hypatia model login ${providerId}\` again.${alternative}`,
 		);
 	}
 	return error;

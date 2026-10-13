@@ -118,7 +118,7 @@ test("OpenAlex 404s for ID lookups explain the entity and point to the matching 
 	] as const;
 	for (const [endpoint, entity, searchTool] of cases) {
 		const error = openAlexRequestFailure(404, "Not Found", "<html>404 Not Found</html>", false, new URL(endpoint));
-		assert.ok(error.message.includes("no " + entity + ' "'));
+		assert.ok(error.message.includes(`returned 404 for the ${entity} lookup "`));
 		assert.match(error.message, new RegExp(searchTool));
 		assert.doesNotMatch(error.message, /<html>/);
 	}

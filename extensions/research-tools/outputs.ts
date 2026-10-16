@@ -1,16 +1,13 @@
 import { copyToClipboard, type ExtensionAPI, type ExtensionCommandContext, type ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import type { OverlayOptions } from "@earendil-works/pi-tui";
 import { getExtensionCommandSpec } from "../../metadata/commands.mjs";
-import { OUTPUT_GROUPS, canPreviewOutput, collectOutputArtifacts, oneLine, outputLabel, readOutputPreview, relatedOutput, type OutputArtifact } from "./output-artifacts.js";
+import { canPreviewOutput, collectOutputArtifacts, oneLine, OUTPUT_BROWSER_PREVIEW_BYTES, readOutputPreview, relatedOutput, type OutputArtifact, type OutputPreview } from "./output-artifacts.js";
+import { OutputBrowserPanel, type OutputBrowserAction, type OutputBrowserState, type OutputBrowserTheme } from "./output-browser.js";
 import { OutputReader, type OutputReaderAction, type OutputReaderTheme, type OutputReaderTUI } from "./output-reader.js";
 
 type OutputsOptions = { copyPath?: (text: string) => Promise<void> };
-type OutputsUIContext = Pick<ExtensionUIContext, "select" | "notify" | "setEditorText"> & {
-	theme?: OutputReaderTheme;
-	custom<T>(
-		factory: (tui: OutputReaderTUI, theme: OutputReaderTheme, keybindings: unknown, done: (result: T) => void) => OutputReader,
-		options?: { overlay?: boolean; overlayOptions?: OverlayOptions | (() => OverlayOptions) },
-	): Promise<T>;
+type OutputsUIContext = Pick<ExtensionUIContext, "notify" | "setEditorText" | "custom"> & {
+	theme?: OutputReaderTheme & OutputBrowserTheme;
 };
 export type OutputsCommandContext = Pick<ExtensionCommandContext, "mode" | "hasUI" | "cwd"> & {
 	ui: OutputsUIContext;
@@ -18,6 +15,10 @@ export type OutputsCommandContext = Pick<ExtensionCommandContext, "mode" | "hasU
 
 function prefill(ctx: OutputsCommandContext, artifact: OutputArtifact): void {
 	ctx.ui.setEditorText(`Read the local file at this exact path: ${JSON.stringify(artifact.path)}.`);
+}
+
+async function readBrowserPreview(cwd: string, artifact: OutputArtifact): Promise<OutputPreview> {
+	return readOutputPreview(cwd, artifact, { maxBytes: OUTPUT_BROWSER_PREVIEW_BYTES, truncate: true });
 }
 
 async function viewOutput(ctx: OutputsCommandContext, selected: OutputArtifact, items: readonly OutputArtifact[], copyPath: (text: string) => Promise<void>): Promise<boolean> {
@@ -48,32 +49,31 @@ export async function runOutputsCommand(ctx: OutputsCommandContext, copyPath: (t
 	}
 	const items = await collectOutputArtifacts(ctx.cwd);
 	if (!items.length) { ctx.ui.notify("No artifacts found. Use /lit, /draft, /review, or /deepresearch to create some.", "info"); return; }
-	const groups = OUTPUT_GROUPS.filter((group) => items.some((item) => item.group === group));
-	const groupLabels = groups.map((group) => `${group} (${items.filter((item) => item.group === group).length})`);
+	const defaultGroup = items.some((item) => item.group === "Reports") ? "Reports" : items[0]!.group;
+	let state: OutputBrowserState = { group: defaultGroup, selectedPath: items.find((item) => item.group === defaultGroup)?.path, query: "" };
 	while (true) {
-		const groupChoice = await ctx.ui.select("Research outputs", groupLabels);
-		if (!groupChoice) return;
-		const group = groups[groupLabels.indexOf(groupChoice)];
-		if (!group) return;
-		const groupItems = items.filter((item) => item.group === group);
-		const labels = groupItems.map(outputLabel);
-		while (true) {
-			const choice = await ctx.ui.select(`${group} · newest first`, labels);
-			if (!choice) break;
-			const selected = groupItems[labels.indexOf(choice)];
-			if (!selected) continue;
-			if (canPreviewOutput(selected)) {
-				try { if (await viewOutput(ctx, selected, items, copyPath)) return; continue; }
-				catch (error) { ctx.ui.notify(oneLine(error instanceof Error ? error.message : String(error)), "warning"); }
-			}
-			const pair = relatedOutput(selected, items);
-			const pairAction = pair && canPreviewOutput(pair) ? (pair.group === "Provenance" ? "View provenance" : "View report") : undefined;
-			const action = await ctx.ui.select(selected.path, [ ...(pairAction ? [pairAction] : []), "Copy path", "Read in chat", "Back" ]);
-			if (action === "Read in chat") { prefill(ctx, selected); return; }
-			try {
-				if (action === "Copy path") { await copyPath(selected.fullPath); ctx.ui.notify("Path copied", "info"); }
-				else if (pairAction && action === pairAction && pair) { if (await viewOutput(ctx, pair, items, copyPath)) return; }
-			} catch (error) { ctx.ui.notify(oneLine(error instanceof Error ? error.message : String(error)), "warning"); }
+		const selected = items.find((item) => item.path === state.selectedPath && item.group === state.group)
+			?? items.find((item) => item.group === state.group);
+		const initialPreview = selected && canPreviewOutput(selected) ? await readBrowserPreview(ctx.cwd, selected).catch(() => undefined) : undefined;
+		const action = await ctx.ui.custom<OutputBrowserAction>((tui, theme, _keys, done) => new OutputBrowserPanel(tui, {
+			items,
+			state,
+			initialPreview,
+			loadPreview: (artifact) => readBrowserPreview(ctx.cwd, artifact),
+			copyPath,
+			theme: () => ctx.ui.theme ?? theme,
+			done,
+		}), {
+			overlay: true,
+			overlayOptions: { anchor: "center", width: "96%", maxHeight: "88%", margin: 1 } satisfies OverlayOptions,
+		});
+		if (!action || action.type === "close") return;
+		if (action.type === "read") { prefill(ctx, action.artifact); return; }
+		state = action.state;
+		try {
+			if (await viewOutput(ctx, action.artifact, items, copyPath)) return;
+		} catch (error) {
+			ctx.ui.notify(oneLine(error instanceof Error ? error.message : String(error)), "warning");
 		}
 	}
 }

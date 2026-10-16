@@ -10,11 +10,11 @@ type Tool = {
 
 const originalFetch = globalThis.fetch;
 const names = [
-	"HYPATIA_LAYA_ENABLED",
-	"HYPATIA_LAYA_URL",
-	"HYPATIA_LAYA_TIMEOUT_MS",
-	"HYPATIA_LAYA_CONCURRENCY",
-	"LAYA_API_KEY",
+	"HYPATIA_KEV_ENABLED",
+	"HYPATIA_KEV_URL",
+	"HYPATIA_KEV_TIMEOUT_MS",
+	"HYPATIA_KEV_CONCURRENCY",
+	"KEV_API_KEY",
 ] as const;
 const originalEnv = new Map(names.map((name) => [name, process.env[name]]));
 
@@ -44,14 +44,14 @@ function jsonResponse(body: unknown): Response {
 	});
 }
 
-test("science database search preserves source order when Laya is enabled", async () => {
-	process.env.HYPATIA_LAYA_ENABLED = "1";
-	process.env.HYPATIA_LAYA_URL = "http://127.0.0.1:8000";
-	delete process.env.HYPATIA_LAYA_TIMEOUT_MS;
-	delete process.env.HYPATIA_LAYA_CONCURRENCY;
-	delete process.env.LAYA_API_KEY;
+test("science database search preserves source order when Kev is enabled", async () => {
+	process.env.HYPATIA_KEV_ENABLED = "1";
+	process.env.HYPATIA_KEV_URL = "http://127.0.0.1:8008";
+	delete process.env.HYPATIA_KEV_TIMEOUT_MS;
+	delete process.env.HYPATIA_KEV_CONCURRENCY;
+	delete process.env.KEV_API_KEY;
 
-	let layaCalls = 0;
+	let kevCalls = 0;
 	globalThis.fetch = async (input, init) => {
 		const url = new URL(String(input));
 		if (url.hostname === "api.semanticscholar.org") {
@@ -59,36 +59,36 @@ test("science database search preserves source order when Laya is enabled", asyn
 				total: 2,
 				data: [
 					{ paperId: "original-first", title: "Original first", abstract: "First abstract." },
-					{ paperId: "laya-first", title: "Laya first", abstract: "Second abstract." },
+					{ paperId: "kev-first", title: "Kev first", abstract: "Second abstract." },
 				],
 			});
 		}
-		if (url.hostname === "127.0.0.1") layaCalls += 1;
+		if (url.hostname === "127.0.0.1") kevCalls += 1;
 		throw new Error(`unexpected URL ${url.toString()}`);
 	};
 
 	const tool = registerTools().get("hypatia_science_database_search");
 	assert.ok(tool);
-	const result = await tool.execute("call-laya", {
+	const result = await tool.execute("call-kev", {
 		source: "semanticscholar",
 		query: "mechanistic interpretability sparse autoencoders",
 		limit: 2,
 	});
 	const details = result.details as { results: Array<{ paperId: string }> };
 
-	assert.deepEqual(details.results.map((row) => row.paperId), ["original-first", "laya-first"]);
-	assert.equal("layaStatus" in details, false);
-	assert.equal(layaCalls, 0);
+	assert.deepEqual(details.results.map((row) => row.paperId), ["original-first", "kev-first"]);
+	assert.equal("kevStatus" in details, false);
+	assert.equal(kevCalls, 0);
 });
 
-test("explicit Laya advisory returns a suggested order without replacing source order", async () => {
-	process.env.HYPATIA_LAYA_ENABLED = "1";
-	process.env.HYPATIA_LAYA_URL = "http://127.0.0.1:8000";
-	delete process.env.HYPATIA_LAYA_TIMEOUT_MS;
-	delete process.env.HYPATIA_LAYA_CONCURRENCY;
-	delete process.env.LAYA_API_KEY;
+test("explicit Kev advisory returns a suggested order without replacing source order", async () => {
+	process.env.HYPATIA_KEV_ENABLED = "1";
+	process.env.HYPATIA_KEV_URL = "http://127.0.0.1:8008";
+	delete process.env.HYPATIA_KEV_TIMEOUT_MS;
+	delete process.env.HYPATIA_KEV_CONCURRENCY;
+	delete process.env.KEV_API_KEY;
 
-	let healthCalls = 0;
+	let modelCalls = 0;
 	let scoreCalls = 0;
 	globalThis.fetch = async (input, init) => {
 		const url = new URL(String(input));
@@ -97,28 +97,24 @@ test("explicit Laya advisory returns a suggested order without replacing source 
 				total: 2,
 				data: [
 					{ paperId: "original-first", title: "Original first", abstract: "First abstract." },
-					{ paperId: "laya-first", title: "Laya first", abstract: "Second abstract." },
+					{ paperId: "kev-first", title: "Kev first", abstract: "Second abstract." },
 				],
 			});
 		}
-		if (url.pathname === "/health") {
-			healthCalls += 1;
-			return healthCalls === 1
-				? jsonResponse({ status: "ok" })
-				: jsonResponse({
-						status: "ok",
-						revisions: { english: "revision-integration-test" },
-						checkpoint_devices: { english: "cpu" },
-					});
+		if (url.pathname === "/v1/models") {
+			modelCalls += 1;
+			return jsonResponse({
+				models: [{ name: "kev-latest", run: "jaredpalmer/kev-4b", device: "cpu", truncate_states: false }],
+			});
 		}
 		if (url.pathname === "/v1/systemone") {
 			scoreCalls += 1;
 			const body = JSON.parse(String(init?.body)) as { state: string };
-			const layaFirst = body.state.includes("Paper title: Laya first");
-			const score = layaFirst ? 0.95 : 0.15;
+			const kevFirst = body.state.includes("Paper title: Kev first");
+			const score = kevFirst ? 0.95 : 0.15;
 			return jsonResponse({
-				answers: { relevance: { choice: layaFirst ? "A" : "B", probabilities: { A: score, B: 1 - score } } },
-				usage: { truncated: false },
+				answers: { relevance: { choice: kevFirst ? "A" : "B", probabilities: { A: score, B: 1 - score } } },
+				truncated: false,
 			});
 		}
 		throw new Error(`unexpected URL ${url.toString()}`);
@@ -126,7 +122,7 @@ test("explicit Laya advisory returns a suggested order without replacing source 
 
 	const tools = registerTools();
 	const searchTool = tools.get("hypatia_science_database_search");
-	const advisoryTool = tools.get("hypatia_laya_advisory");
+	const advisoryTool = tools.get("hypatia_kev_advisory");
 	assert.ok(searchTool);
 	assert.ok(advisoryTool);
 	const search = await searchTool.execute("call-search", {
@@ -137,8 +133,8 @@ test("explicit Laya advisory returns a suggested order without replacing source 
 	const searchDetails = search.details as {
 		results: Array<{ abstract: string; paperId: string; title: string }>;
 	};
-	assert.deepEqual(searchDetails.results.map((row) => row.paperId), ["original-first", "laya-first"]);
-	assert.equal(healthCalls, 0);
+	assert.deepEqual(searchDetails.results.map((row) => row.paperId), ["original-first", "kev-first"]);
+	assert.equal(modelCalls, 0);
 	assert.equal(scoreCalls, 0);
 
 	const advisory = await advisoryTool.execute("call-advisory", {
@@ -151,18 +147,18 @@ test("explicit Laya advisory returns a suggested order without replacing source 
 		})),
 	});
 	const advisoryDetails = advisory.details as {
-		layaStatus: { state: string; revision: string };
-		layaSuggestedOrder: Array<{ candidateId: string; layaScore: number; layaOriginalRank: number }>;
+		kevStatus: { state: string; checkpoint: string };
+		kevSuggestedOrder: Array<{ candidateId: string; kevScore: number; kevOriginalRank: number }>;
 		results: Array<{ candidateId: string }>;
 	};
 
-	assert.equal(advisoryDetails.layaStatus.state, "advisory");
-	assert.equal(advisoryDetails.layaStatus.revision, "revision-integration-test");
-	assert.deepEqual(advisoryDetails.results.map((row) => row.candidateId), ["original-first", "laya-first"]);
-	assert.deepEqual(advisoryDetails.layaSuggestedOrder.map((row) => [row.candidateId, row.layaOriginalRank, row.layaScore]), [
-		["laya-first", 2, 0.95],
+	assert.equal(advisoryDetails.kevStatus.state, "advisory");
+	assert.equal(advisoryDetails.kevStatus.checkpoint, "jaredpalmer/kev-4b");
+	assert.deepEqual(advisoryDetails.results.map((row) => row.candidateId), ["original-first", "kev-first"]);
+	assert.deepEqual(advisoryDetails.kevSuggestedOrder.map((row) => [row.candidateId, row.kevOriginalRank, row.kevScore]), [
+		["kev-first", 2, 0.95],
 		["original-first", 1, 0.15],
 	]);
-	assert.equal(healthCalls, 2);
+	assert.equal(modelCalls, 2);
 	assert.equal(scoreCalls, 2);
 });

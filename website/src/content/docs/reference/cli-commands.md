@@ -41,16 +41,20 @@ Failed model requests also include recovery suggestions for model access, credit
 
 | Command | Description |
 | --- | --- |
-| `hypatia alpha login` | Sign in to alphaXiv |
-| `hypatia alpha logout` | Clear alphaXiv auth |
-| `hypatia alpha status` | Check alphaXiv auth status |
-| `hypatia alpha search "query"` | Search papers through Hypatia's bundled alphaXiv client |
-| `hypatia alpha get <id-or-url>` | Fetch paper content and local annotations |
-| `hypatia alpha ask <id-or-url> "question"` | Ask a question about a paper |
-| `hypatia alpha code <github-url> [path]` | Inspect a paper repository |
+| `hypatia alpha login` | Optional sign-in for agentic search, PDF Q&A, and GitHub code reading |
+| `hypatia alpha logout` | Clear optional AlphaXiv account auth |
+| `hypatia alpha status` | Check optional AlphaXiv account auth |
+| `hypatia alpha search "query"` | Public semantic search; no login required |
+| `hypatia alpha search --mode keyword "query"` | Public keyword search; no login required |
+| `hypatia alpha search --mode title "paper title"` | Fast public title lookup; no login required |
+| `hypatia alpha search --published-after YYYY-MM-DD --prioritize recency --limit 20 "query"` | Filter public search by publication date and ranking; result limit is 1–200 |
+| `hypatia alpha get <id-or-url>` | Fetch public paper content and local annotations; no login required |
+| `hypatia alpha implementations <id-or-url>` | List public GitHub implementations linked to a paper; no login required |
+| `hypatia alpha ask <id-or-url> "question"` | Ask a question about a paper (login required) |
+| `hypatia alpha code <github-url> [path]` | Inspect a paper repository (login required) |
 | `hypatia alpha annotate ...` | Read, write, list, or clear local paper notes |
 
-Use `hypatia alpha ...` rather than a global `alpha` binary so the bundled client runs. See [AlphaXiv](/hypatia/docs/tools/alphaxiv).
+Use `hypatia alpha ...` rather than a global `alpha` binary. Hypatia handles public search/reading and routes account-backed actions to its bundled client. See [AlphaXiv](/hypatia/docs/tools/alphaxiv).
 
 ## Package management
 
@@ -122,9 +126,9 @@ For lineage-linked benchmark comparisons, use `/experiments tree ...` inside the
 | `--no-session` | Use an in-memory session that is not persisted |
 | `--no-themes` | Skip theme loading (passed by ACP adapters such as pi-acp) |
 | `--export <session.jsonl> [out.html]` | Export a session file to HTML and exit |
-| `--alpha-login` | Sign in to alphaXiv and exit |
-| `--alpha-logout` | Clear alphaXiv auth and exit |
-| `--alpha-status` | Show alphaXiv auth status and exit |
+| `--alpha-login` | Sign in for agentic search, PDF Q&A, and GitHub code reading, then exit |
+| `--alpha-logout` | Clear optional AlphaXiv account auth and exit |
+| `--alpha-status` | Show optional AlphaXiv account auth status and exit |
 | `--doctor` | Alias for `hypatia doctor` |
 | `--setup-preview` | Alias for `hypatia setup preview` |
 

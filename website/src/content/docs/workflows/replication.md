@@ -7,6 +7,8 @@ order: 6
 
 The replication workflow builds a source-backed plan for reproducing a paper, benchmark result, or specific claim. It executes only after you choose an environment, and it does not call a result replicated unless the planned checks pass.
 
+If the workspace has a project wiki, Hypatia reads its README and index and follows only relevant indexed pages before extracting implementation details. Wiki pages are read-only leads; the plan and replication notes record paths consulted, while methods and results are verified against the paper and linked code. The evidence-scout brief carries relevant wiki claims/statuses and original URLs when available, and the scout verifies those sources.
+
 ## Usage
 
 From the REPL:

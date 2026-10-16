@@ -20,6 +20,10 @@ Every run must leave these files on disk:
 For argumentative topics (competing claims, disputed results), also leave:
 - `outputs/.drafts/<slug>-tensions.md`
 
+## Project wiki context (read-only)
+
+Before writing the plan, check whether this workspace contains `wiki/`. If both `wiki/README.md` and `wiki/index.md` exist, read them, then follow only relevant indexed links to pages under `wiki/concepts/` and `wiki/sources/`. Do not follow links outside `wiki/`, scan the entire wiki, or read `wiki/.proposals/`. If either index file is missing or unreadable, continue without wiki context and do not create it. Treat wiki pages as prior synthesis and navigation leads, not evidence; verify important, disputed, or stale claims from the original sources. Record the relative paths consulted in the plan and provenance sidecar. If no relevant wiki pages exist, continue without wiki context. Never initialize or modify the wiki during `/deepresearch`.
+
 Before the plan is approved, only the plan file may exist; do not create placeholder drafts, final outputs, or provenance files. After the user approves the plan, if any capability fails, continue in degraded mode and still write a blocked or partial final output and provenance sidecar. Never end with chat-only output after plan approval. Never end with only an explanation in chat after plan approval. Use `Verification: BLOCKED` when verification could not be completed.
 
 ## Step 1: Plan
@@ -74,6 +78,7 @@ If subagents were chosen:
 - Call `hypatia_subagent_models` before writing the workflow. For every child, pass the first model in that role's route as the `model` override. If the route is empty, omit `model` and use Pi's configured role or parent model.
 - If Pi rejects a child launch before the child starts because its model/provider is unavailable, retry that same role/task with the next model in its configured route. Use a unique workflow key and output path for each attempt; record the attempted model and launch failure in the plan. Once a child starts, do not switch models for runtime errors, poor research, unsupported claims, or review findings.
 - Write a per-evidence-scout brief first, such as `outputs/.plans/<slug>-T1.md`.
+- When relevant indexed wiki pages exist, include the exact page paths, each relevant claim and its status, its source ID and original URL, and the question to verify. Treat wiki claims as navigation leads, not evidence; require the scout to verify the original source and list wiki page paths consulted in its output. If no wiki pages apply, say so in the brief.
 - Keep `subagent` tool-call JSON small and valid.
 - Do not place multi-paragraph instructions inside the `subagent` JSON.
 - Use only supported `subagent` keys. Do not add extra keys such as `artifacts` unless the tool schema explicitly exposes them.

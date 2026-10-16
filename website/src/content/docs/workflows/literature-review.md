@@ -7,6 +7,8 @@ order: 2
 
 The literature review workflow maps a field: what researchers agree on, where they disagree, and what remains open. When the input names a lab, PI, author, or lab website, `/lit` runs as a publication-corpus review instead: it resolves the identity, collects reachable publications, and maps research trajectories across them.
 
+If this workspace has a project wiki, Hypatia reads its README and index before planning, then follows only relevant indexed concept/source links. Wiki pages are read-only navigation leads, not evidence; important or disputed claims are checked against original sources. The plan and provenance sidecar record the page paths consulted. `/lit` does not initialize or edit the wiki.
+
 ## Usage
 
 From the REPL:
@@ -25,7 +27,7 @@ hypatia lit "Anthropic interpretability team"
 ## How it works
 
 1. **Plan** -- Hypatia writes the scope (key questions, source types, time period, expected sections, task ledger, verification log) to `outputs/.plans/<slug>.md`, summarizes it, and continues without waiting for confirmation unless you asked to review the plan.
-2. **Gather** -- Wide sweeps use the `evidence-scout` agent, which writes `<slug>-research-*.md` files; narrow topics are searched directly. For a lab or author, the lead agent first resolves the identity and writes a publication log to `notes/<slug>-publications.md` with titles, years, venues, URLs or DOIs, and gaps.
+2. **Gather** -- Wide sweeps use the `evidence-scout` agent, which writes `<slug>-research-*.md` files; narrow topics are searched directly. When relevant wiki pages exist, the lead includes selected page paths, claim statuses, source IDs, and original URLs in each scout brief. The scout verifies those original sources and lists wiki paths consulted in its memo. For a lab or author, the lead agent first resolves the identity and writes a publication log to `notes/<slug>-publications.md` with titles, years, venues, URLs or DOIs, and gaps.
 3. **Synthesize** -- Findings are separated into consensus, disagreements, and open questions, with suggested next experiments or reading when useful. For a lab or author, Hypatia also identifies 3-5 research trajectories and the 3-5 papers that most changed the corpus direction, ranked by contrastive originality, methodology strength, and relationship to prior art rather than author prestige.
 4. **Cite** -- The `auditor` agent adds inline citations and checks every source URL.
 5. **Verify** -- The `critic` agent checks the cited draft for unsupported claims, logical gaps, and single-source critical findings. FATAL issues are fixed and re-checked; MAJOR issues go into Open Questions.

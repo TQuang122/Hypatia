@@ -40,7 +40,7 @@ function printNonInteractiveSetupGuidance(): void {
 	printInfo("  hypatia model login <provider>");
 	printInfo("  hypatia model set <provider/model>");
 	printInfo("  # or configure API keys via env vars/auth.json and rerun `hypatia model list`");
-	printInfo("  hypatia alpha login");
+	printInfo("  hypatia alpha login  # optional: agentic search, PDF Q&A, and GitHub code reading");
 	printInfo("  hypatia doctor");
 }
 
@@ -79,21 +79,21 @@ async function maybeInstallOptionalPackages(options: SetupOptions): Promise<void
 
 async function maybeLoginAlpha(): Promise<void> {
 	if (isAlphaLoggedIn()) {
-		printInfo("alphaXiv already configured.");
+		printInfo("alphaXiv account features already configured.");
 		return;
 	}
 
-	const shouldLogin = await promptConfirm("Connect alphaXiv now?", true);
+	const shouldLogin = await promptConfirm("Sign in for agentic search, PDF Q&A, and GitHub code reading?", false);
 	if (!shouldLogin) {
-		printInfo("Skipping alphaXiv login for now.");
+		printInfo("Skipping optional alphaXiv account features; public search and paper reading work without login.");
 		return;
 	}
 
 	try {
 		await loginAlpha();
-		printSuccess("alphaXiv login complete");
+		printSuccess("alphaXiv account features enabled");
 	} catch (error) {
-		printInfo(`alphaXiv login skipped: ${error instanceof Error ? error.message : String(error)}`);
+		printInfo(`Optional alphaXiv sign-in skipped: ${error instanceof Error ? error.message : String(error)}`);
 	}
 }
 
@@ -148,7 +148,7 @@ export async function runSetup(options: SetupOptions, overrides: SetupFlowOverri
 		);
 		printSection("Ready");
 		printInfo(`Model: ${getCurrentModelSpec(options.settingsPath) ?? "not set"}`);
-		printInfo(`alphaXiv: ${isAlphaLoggedIn() ? "configured" : "not configured"}`);
+		printInfo(`alphaXiv account features: ${isAlphaLoggedIn() ? "configured" : "not configured (public search and reading are available)"}`);
 		printInfo(`Preview: ${resolveExecutable("pandoc", PANDOC_FALLBACK_PATHS) ? "configured" : "not configured"}`);
 		printInfo(`Web: ${getPiWebAccessStatus().routeLabel}`);
 		if (modelStatus.recommended && !modelStatus.currentValid) {

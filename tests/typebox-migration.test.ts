@@ -51,12 +51,12 @@ test("Pi runtime validation omits null alpha_get_paper sections without losing o
 	);
 });
 
-test("without an alphaXiv account only the local annotation tools are registered", () => {
+test("public AlphaXiv search/read tools work without login while account tools stay gated", () => {
 	const names = (signedIn: boolean) => {
 		const registered: string[] = [];
 		registerAlphaTools({ registerTool: (tool: { name: string }) => registered.push(tool.name), on: () => () => {} } as unknown as ExtensionAPI, signedIn);
 		return registered.sort();
 	};
-	assert.deepEqual(names(false), ["alpha_annotate_paper", "alpha_list_annotations"]);
-	assert.deepEqual(names(true), ["alpha_annotate_paper", "alpha_ask_paper", "alpha_get_paper", "alpha_list_annotations", "alpha_read_code", "alpha_search"]);
+	assert.deepEqual(names(false), ["alpha_annotate_paper", "alpha_find_implementations", "alpha_get_paper", "alpha_list_annotations", "alpha_search"]);
+	assert.deepEqual(names(true), ["alpha_annotate_paper", "alpha_ask_paper", "alpha_find_implementations", "alpha_get_paper", "alpha_list_annotations", "alpha_read_code", "alpha_search"]);
 });

@@ -95,22 +95,22 @@ test("search errors and metadata-only notes remain visible in collapsed output",
 	assert.match(note, /Metadata-only/);
 });
 
-test("Laya advisory is explicit, visible, and leaves the source order in place", () => {
-	const renderers = createPaperSearchRenderers("laya");
+test("Kev advisory is explicit, visible, and leaves the source order in place", () => {
+	const renderers = createPaperSearchRenderers("kev");
 	const advisoryData = result({
 		source: "openalex",
 		results: [
-			{ title: "Original first", layaScore: 0.2, layaOriginalRank: 1 },
-			{ title: "Suggested first", layaScore: 0.9, layaOriginalRank: 2 },
+			{ title: "Original first", kevScore: 0.2, kevOriginalRank: 1 },
+			{ title: "Suggested first", kevScore: 0.9, kevOriginalRank: 2 },
 		],
-		layaSuggestedOrder: [
-			{ candidateId: "suggested", title: "Suggested first", layaScore: 0.9, layaOriginalRank: 2 },
-			{ candidateId: "original", title: "Original first", layaScore: 0.2, layaOriginalRank: 1 },
+		kevSuggestedOrder: [
+			{ candidateId: "suggested", title: "Suggested first", kevScore: 0.9, kevOriginalRank: 2 },
+			{ candidateId: "original", title: "Original first", kevScore: 0.2, kevOriginalRank: 1 },
 		],
-		layaStatus: { state: "advisory", message: "Laya suggested an order; source order was preserved." },
+		kevStatus: { state: "advisory", message: "Kev suggested an order; source order was preserved." },
 	});
 	const call = plain(renderers.renderCall({ source: "openalex", query: "query" }, theme, context("openalex")).render(120));
-	assert.match(call, /Laya advisory · OpenAlex/u);
+	assert.match(call, /Kev advisory · OpenAlex/u);
 	const advisory = plain(renderers.renderResult(
 		advisoryData,
 		collapsed,
@@ -118,9 +118,9 @@ test("Laya advisory is explicit, visible, and leaves the source order in place",
 		context("openalex"),
 	).render(140));
 	assert.match(advisory, /Complete · OpenAlex · 2 results/u);
-	assert.match(advisory, /Laya suggested an order; source order was preserved/u);
+	assert.match(advisory, /Kev suggested an order; source order was preserved/u);
 	const expanded = plain(renderers.renderResult(advisoryData, { ...collapsed, expanded: true }, theme, context("openalex")).render(1_000));
-	assert.match(expanded, /layaSuggestedOrder/u);
+	assert.match(expanded, /kevSuggestedOrder/u);
 	assert.ok(expanded.indexOf("Original first") < expanded.indexOf("Suggested first"));
 
 	const databaseRenderer = createPaperSearchRenderers("database");
@@ -128,13 +128,13 @@ test("Laya advisory is explicit, visible, and leaves the source order in place",
 		result({
 			source: "openalex",
 			results: [{ title: "Paper" }],
-			layaStatus: { state: "unavailable", message: "Laya was unavailable (HTTP 503); original order was retained." },
+			kevStatus: { state: "unavailable", message: "Kev was unavailable (HTTP 503); original order was retained." },
 		}),
 		collapsed,
 		theme,
 		context("openalex"),
 	).render(140));
-	assert.match(fallback, /Laya was unavailable.*original order was retained/u);
+	assert.match(fallback, /Kev was unavailable.*original order was retained/u);
 });
 
 test("search rendering fits narrow widths and neutralizes control characters in summary fields", () => {

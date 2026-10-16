@@ -23,11 +23,13 @@ hypatia deepresearch "What are the current approaches to mechanistic interpretab
 
 `/deepresearch` stops after writing its plan and waits for you to reply "yes" or request changes. Nothing is searched, fetched, or drafted before you approve.
 
+If the workspace already has a project wiki, Hypatia reads its README and index before planning, then follows only relevant indexed concept/source links. Those pages are read-only navigation leads, not evidence; critical claims are checked against original sources. The plan and provenance sidecar record the wiki page paths consulted. `/deepresearch` never initializes or edits the wiki.
+
 ## How it works
 
-1. **Plan** -- Hypatia writes `outputs/.plans/<slug>.md` with key questions, evidence needed, a scale decision, a task ledger, a verification log, and a decision log, then asks for confirmation.
+1. **Plan** -- Hypatia writes `outputs/.plans/<slug>.md` with key questions, evidence needed, a scale decision, a task ledger, a verification log, and a decision log, including relevant wiki page paths when available, then asks for confirmation.
 2. **Scale** -- Narrow questions and "what is X" explainers use direct search by the lead agent (at least three distinct queries). Comparisons of 2-3 items use 2 `evidence-scout` agents, broad surveys 3-4, and complex multi-domain topics 4-6.
-3. **Gather** -- Researchers run in parallel, each writing its findings to a file. Hypatia prefers abstracts, HTML pages, official docs, and paper metadata, and reads full text only for the few papers the conclusions depend on. Failed or missing research is recorded in the plan rather than assumed to exist.
+3. **Gather** -- Researchers run in parallel, each writing its findings to a file. When relevant wiki pages exist, the lead includes selected page paths, claim statuses, source IDs, and original URLs in each scout brief. Scouts treat them as navigation leads, verify the original sources, and record wiki paths consulted in their output. Hypatia prefers abstracts, HTML pages, official docs, and paper metadata, and reads full text only for the few papers the conclusions depend on. Failed or missing research is recorded in the plan rather than assumed to exist.
 4. **Draft** -- The lead agent writes the draft itself and removes or downgrades any claim that does not map to a source, note, or artifact.
 5. **Cite** -- When evidence-scouts were used, the `auditor` agent adds inline citations and checks every URL. In direct-search runs, the lead agent does this itself.
 6. **Review** -- When evidence-scouts were used, the `critic` agent checks the cited draft for unsupported claims, logical gaps, single-source critical claims, and overstated confidence; FATAL issues are fixed and re-reviewed before delivery. In direct-search runs, the lead agent writes the review itself.

@@ -31,6 +31,8 @@ Give a topic and let Hypatia find the sources, or list the specific papers and d
 
 Hypatia writes a comparison plan (sources, dimensions to evaluate, output structure) to `outputs/.plans/<slug>.md`, summarizes it, and continues without waiting for confirmation unless you asked to review the plan.
 
+If the workspace has a project wiki, Hypatia reads its README and index and follows only relevant indexed pages. These are read-only leads, not evidence; the plan and final comparison record the page paths consulted. For broad comparisons delegated to evidence-scouts, the lead includes selected wiki paths, claim statuses, and original source URLs in each brief; scouts verify the originals and record consulted wiki paths.
+
 When the comparison set is broad, the `evidence-scout` agent gathers source material. The `auditor` agent then checks sources and adds inline citations to the final matrix.
 
 ## Output

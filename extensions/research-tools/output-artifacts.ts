@@ -8,8 +8,10 @@ export type OutputArtifact = {
 	path: string; fullPath: string; title: string; group: OutputGroup;
 	size: number; modifiedAt: number; extension: string;
 };
-export type OutputPreview = { artifact: OutputArtifact; content: string; markdown: boolean };
+export type OutputPreview = { artifact: OutputArtifact; content: string; markdown: boolean; truncated?: boolean };
+export type OutputPreviewOptions = { maxBytes?: number; truncate?: boolean };
 export const MAX_OUTPUT_PREVIEW_BYTES = 2 * 1024 * 1024;
+export const OUTPUT_BROWSER_PREVIEW_BYTES = 12 * 1024;
 
 const DIRECTORIES = ["papers", "outputs", "experiments", "notes"];
 const EXTENSIONS = new Set([".md", ".tex", ".pdf", ".py", ".csv", ".json", ".html", ".txt", ".log"]);
@@ -86,8 +88,10 @@ export function outputLabel(artifact: OutputArtifact, index: number): string {
 	return `${index + 1}. ${oneLine(artifact.path)}${artifact.title ? ` — ${artifact.title}` : ""} (${size})`;
 }
 
-export async function readOutputPreview(cwd: string, artifact: OutputArtifact): Promise<OutputPreview> {
+export async function readOutputPreview(cwd: string, artifact: OutputArtifact, options: OutputPreviewOptions = {}): Promise<OutputPreview> {
 	if (!canPreviewOutput(artifact)) throw new Error("This file type has no text preview. Copy its path to open it in an editor or use Read in chat.");
+	const maxBytes = options.maxBytes ?? MAX_OUTPUT_PREVIEW_BYTES;
+	if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_OUTPUT_PREVIEW_BYTES) throw new RangeError("Preview byte limit must be between 1 byte and 2 MiB.");
 	const root = await realpath(cwd);
 	const path = await realpath(artifact.fullPath);
 	const rel = relative(root, path);
@@ -97,16 +101,17 @@ export async function readOutputPreview(cwd: string, artifact: OutputArtifact): 
 	try {
 		const info = await handle.stat();
 		if (!info.isFile()) throw new Error("Artifact is no longer a regular file.");
-		if (info.size > MAX_OUTPUT_PREVIEW_BYTES) throw new Error("TUI preview is limited to 2 MiB. Copy the path to open the complete file in an editor.");
-		const buffer = Buffer.alloc(MAX_OUTPUT_PREVIEW_BYTES + 1);
+		if (info.size > maxBytes && !options.truncate) throw new Error("TUI preview is limited to 2 MiB. Copy the path to open the complete file in an editor.");
+		const buffer = Buffer.alloc(maxBytes + 1);
 		let length = 0;
 		while (length < buffer.length) {
 			const { bytesRead } = await handle.read(buffer, length, buffer.length - length, null);
 			if (!bytesRead) break;
 			length += bytesRead;
 		}
-		if (length > MAX_OUTPUT_PREVIEW_BYTES) throw new Error("File grew beyond the 2 MiB preview limit. Copy the path to open the complete file.");
-		const content = stripVTControlCharacters(buffer.subarray(0, length).toString("utf8")).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g, " ");
-		return { artifact, content, markdown: artifact.extension === ".md" };
+		if (length > maxBytes && !options.truncate) throw new Error("File grew beyond the 2 MiB preview limit. Copy the path to open the complete file.");
+		const truncated = info.size > maxBytes || length > maxBytes;
+		const content = stripVTControlCharacters(buffer.subarray(0, Math.min(length, maxBytes)).toString("utf8")).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g, " ");
+		return { artifact, content, markdown: artifact.extension === ".md", ...(truncated ? { truncated: true } : {}) };
 	} finally { await handle.close(); }
 }

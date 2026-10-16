@@ -1,5 +1,5 @@
 import { Key, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import type { Component, TUI } from "@earendil-works/pi-tui";
+import type { Component, TUI, TuiMouseEvent, TuiMouseEventResult } from "@earendil-works/pi-tui";
 import { getAgentDir, ModelRuntime, type ExtensionCommandContext, type Theme } from "@earendil-works/pi-coding-agent";
 
 export interface IdeaModelOption {
@@ -54,6 +54,13 @@ class IdeaModelSelector implements Component {
 			return;
 		} else return;
 		this.tui.requestRender();
+	}
+
+	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+		if (event.type !== "wheel" || event.wheelDelta === undefined) return undefined;
+		this.status = "";
+		this.cursor = Math.max(0, Math.min(this.models.length - 1, this.cursor + Math.trunc(event.wheelDelta)));
+		return { handled: true, render: true };
 	}
 
 	private pageSize(): number {
@@ -119,7 +126,7 @@ class IdeaModelSelector implements Component {
 			}),
 			...(this.models.length > pageSize ? [`Models ${start + 1}–${Math.min(start + pageSize, this.models.length)} of ${this.models.length}`] : []),
 			...(this.status ? [this.theme.fg("warning", this.status)] : []),
-			this.theme.fg("dim", "↑↓ move · Space select · 1/3 or ←→ panel size · Enter continue · Esc cancel"),
+			this.theme.fg("dim", "↑↓/wheel move · Space select · 1/3 or ←→ size · Enter · Esc cancel"),
 		];
 		const innerWidth = Math.max(1, width - 2);
 		const surface = (value: string) => {
@@ -163,6 +170,6 @@ export async function selectIdeaModelPanel(ctx: ExtensionCommandContext): Promis
 	}
 	return ctx.ui.custom<string[] | undefined>((tui, theme, _keys, done) => new IdeaModelSelector(tui, theme, models, done), {
 		overlay: true,
-		overlayOptions: { anchor: "bottom-center", width: "96%", maxHeight: "58%", offsetY: -6, margin: { left: 1, right: 1, top: 1, bottom: 1 } },
+		overlayOptions: { anchor: "bottom-center", width: "100%", maxHeight: "58%", offsetY: -6, margin: 0 },
 	});
 }

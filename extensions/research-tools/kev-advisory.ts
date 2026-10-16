@@ -1,20 +1,21 @@
 type SearchParams = { query: string; source: string };
-type LayaStatus = {
+type KevModel = { name: string; truncatesStates: boolean };
+type KevStatus = {
 	state: "not_applicable" | "advisory" | "unavailable";
 	message: string;
 	abstractMissingCount?: number;
+	checkpoint?: string;
 	device?: string;
 	durationMs?: number;
-	revision?: string;
 	scoredCandidates?: number;
 	truncatedCandidates?: number;
 };
 
-const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
+const DEFAULT_BASE_URL = "http://127.0.0.1:8008";
 const DEFAULT_TIMEOUT_MS = 2_000;
 const DEFAULT_CONCURRENCY = 4;
 const MAX_CONCURRENCY = 8;
-const LAYA_QUESTION = {
+const KEV_QUESTION = {
 	relevance: {
 		type: "choice",
 		instructions: "Judge how useful this paper is for answering the research question.",
@@ -41,7 +42,7 @@ function isTopicSearch(params: SearchParams, result: Record<string, unknown>): b
 	if (mode === "fulltext") return false;
 	if (params.source === "pubmed" && mode !== "search") return false;
 	if (params.source === "openalex" && !["work-search", "work-semantic-search", "openalex_search_works"].includes(mode ?? "")) return false;
-	if (/^(?:doi|pmid|pmcid|arxiv|convert|related|fulltext|sections|copyright|citation|citations|references?|work|author|authors|source|venue)\s*:/iu.test(query)) {
+	if (/^(?:doi|pmid|pmcid|arxiv|convert|related|fulltext|sections|ext_id|copyright|citation|citations|references?|work|author|authors|source|venue)\s*:/iu.test(query)) {
 		return false;
 	}
 	if (/^(?:openalex_(?!search_works\b)|rate-limit\b)/iu.test(query)) return false;
@@ -54,7 +55,7 @@ function loopbackOrigin(value: string): URL {
 	try {
 		url = new URL(value);
 	} catch {
-		throw new Error("HYPATIA_LAYA_URL must be a loopback HTTP origin.");
+		throw new Error("HYPATIA_KEV_URL must be a loopback HTTP origin.");
 	}
 	if (
 		url.protocol !== "http:"
@@ -65,7 +66,7 @@ function loopbackOrigin(value: string): URL {
 		|| url.search
 		|| url.hash
 	) {
-		throw new Error("HYPATIA_LAYA_URL must be an HTTP loopback origin on 127.0.0.1 or [::1].");
+		throw new Error("HYPATIA_KEV_URL must be an HTTP loopback origin on 127.0.0.1 or [::1].");
 	}
 	return url;
 }
@@ -88,6 +89,11 @@ async function readJson(fetcher: typeof fetch, url: URL, timeoutMs: number, apiK
 	return record(await response.json());
 }
 
+function modelCard(models: Record<string, unknown>, model: string): Record<string, unknown> {
+	const cards = Array.isArray(models.models) ? models.models.map(record) : [];
+	return cards.find((card) => text(card.name) === model) ?? {};
+}
+
 function stateFor(query: string, title: string, abstract: string | undefined): string {
 	return [
 		`Research question:\n${query}`,
@@ -102,7 +108,7 @@ async function scoreCandidate(
 	baseUrl: URL,
 	timeoutMs: number,
 	apiKey: string | undefined,
-	model: string,
+	model: KevModel,
 	fetcher: typeof fetch,
 ): Promise<{ score: number; choice: "A" | "B"; truncated: boolean }> {
 	const title = text(candidate.title);
@@ -114,9 +120,9 @@ async function scoreCandidate(
 			...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
 		},
 		body: JSON.stringify({
-			model,
+			model: model.name,
 			state: stateFor(query, title, text(candidate.abstract)),
-			questions: LAYA_QUESTION,
+			questions: KEV_QUESTION,
 		}),
 		redirect: "error",
 		signal: AbortSignal.timeout(timeoutMs),
@@ -130,15 +136,22 @@ async function scoreCandidate(
 	if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 1 || (choice !== "A" && choice !== "B")) {
 		throw new Error("Invalid relevance response.");
 	}
+	const truncated = record(result).truncated;
+	if (
+		(truncated !== undefined && typeof truncated !== "boolean")
+		|| (model.truncatesStates && typeof truncated !== "boolean")
+	) {
+		throw new Error("Invalid truncation status response.");
+	}
 	return {
 		score,
 		choice,
-		truncated: record(record(result).usage).truncated === true,
+		truncated: truncated === true,
 	};
 }
 
-function withStatus(result: Record<string, unknown>, status: LayaStatus): Record<string, unknown> {
-	return { ...result, layaStatus: status };
+function withStatus(result: Record<string, unknown>, status: KevStatus): Record<string, unknown> {
+	return { ...result, kevStatus: status };
 }
 
 export async function rerankScienceDatabaseResults(
@@ -147,35 +160,41 @@ export async function rerankScienceDatabaseResults(
 	environment: NodeJS.ProcessEnv = process.env,
 	fetcher: typeof fetch = globalThis.fetch,
 ): Promise<Record<string, unknown>> {
-	if (environment.HYPATIA_LAYA_ENABLED !== "1") {
+	if (environment.HYPATIA_KEV_ENABLED !== "1") {
 		return withStatus(result, {
 			state: "not_applicable",
-			message: "Laya advisory is disabled; set HYPATIA_LAYA_ENABLED=1 to request local scores.",
+			message: "Kev advisory is disabled; set HYPATIA_KEV_ENABLED=1 to request local scores.",
 		});
 	}
 	if (!isTopicSearch(params, result)) {
 		return withStatus(result, {
 			state: "not_applicable",
-			message: "Laya was not called: this is not a topical paper-discovery search.",
+			message: "Kev was not called: this is not a topical paper-discovery search.",
 		});
 	}
 	const candidates = Array.isArray(result.results) ? result.results.map(record) : [];
 	if (candidates.length < 2) {
 		return withStatus(result, {
 			state: "not_applicable",
-			message: "Laya was not called: fewer than two paper results were returned.",
+			message: "Kev was not called: fewer than two paper results were returned.",
 		});
 	}
 
 	const startedAt = performance.now();
 	try {
-		const baseUrl = loopbackOrigin(environment.HYPATIA_LAYA_URL ?? DEFAULT_BASE_URL);
-		const timeoutMs = positiveInteger(environment.HYPATIA_LAYA_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, "HYPATIA_LAYA_TIMEOUT_MS", 60_000);
-		const concurrency = positiveInteger(environment.HYPATIA_LAYA_CONCURRENCY, DEFAULT_CONCURRENCY, "HYPATIA_LAYA_CONCURRENCY", MAX_CONCURRENCY);
-		const model = environment.HYPATIA_LAYA_MODEL?.trim() || "english";
-		const apiKey = environment.LAYA_API_KEY?.trim() || undefined;
-		const initialHealth = await readJson(fetcher, new URL("/health", baseUrl), timeoutMs, apiKey);
-		if (initialHealth.status !== "ok") throw new Error("Health probe did not report a live service.");
+		const baseUrl = loopbackOrigin(environment.HYPATIA_KEV_URL ?? DEFAULT_BASE_URL);
+		const timeoutMs = positiveInteger(environment.HYPATIA_KEV_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, "HYPATIA_KEV_TIMEOUT_MS", 60_000);
+		const concurrency = positiveInteger(environment.HYPATIA_KEV_CONCURRENCY, DEFAULT_CONCURRENCY, "HYPATIA_KEV_CONCURRENCY", MAX_CONCURRENCY);
+		const modelName = environment.HYPATIA_KEV_MODEL?.trim() || "kev-latest";
+		const apiKey = environment.KEV_API_KEY?.trim() || undefined;
+		const initialModels = await readJson(fetcher, new URL("/v1/models", baseUrl), timeoutMs, apiKey);
+		const initialCard = modelCard(initialModels, modelName);
+		const checkpoint = text(initialCard.run);
+		const truncatesStates = initialCard.truncate_states;
+		if (!checkpoint || typeof truncatesStates !== "boolean") {
+			throw new Error(`Configured Kev model metadata was incomplete (/v1/models, ${modelName}).`);
+		}
+		const model = { name: modelName, truncatesStates };
 
 		const scored: Array<{ candidate: Record<string, unknown>; choice: "A" | "B"; originalRank: number; score: number; truncated: boolean }> = [];
 		let truncatedCandidates = 0;
@@ -198,16 +217,16 @@ export async function rerankScienceDatabaseResults(
 			}
 		}
 
-		const health = await readJson(fetcher, new URL("/health", baseUrl), timeoutMs, apiKey);
-		if (health.status !== "ok") throw new Error("Health probe did not report a healthy service after inference.");
-		const revisions = record(health.revisions);
-		const devices = record(health.checkpoint_devices);
-		const revision = text(revisions[model]);
-		if (!revision) throw new Error(`Configured checkpoint revision was not reported after inference (${model}).`);
+		const finalModels = await readJson(fetcher, new URL("/v1/models", baseUrl), timeoutMs, apiKey);
+		const finalCard = modelCard(finalModels, model.name);
+		if (text(finalCard.run) !== checkpoint || finalCard.truncate_states !== model.truncatesStates) {
+			throw new Error(`Configured Kev model changed during inference (${model.name}).`);
+		}
 
-		const layaSuggestedOrder = scored
+		const kevSuggestedRows = [...scored]
 			.sort((left, right) => right.score - left.score || left.originalRank - right.originalRank)
-			.map(({ candidate, choice, originalRank, score, truncated }) => ({
+			.map((row, index) => ({ ...row, suggestedRank: index + 1 }));
+		const kevSuggestedOrder = kevSuggestedRows.map(({ candidate, choice, originalRank, score, truncated, suggestedRank }) => ({
 				candidateId:
 					text(candidate.candidateId)
 					?? text(candidate.paperId)
@@ -218,40 +237,44 @@ export async function rerankScienceDatabaseResults(
 					?? text(candidate.id)
 					?? `rank:${originalRank}`,
 				title: text(candidate.title) ?? "",
-				layaScore: score,
-				layaChoice: choice,
-				layaOriginalRank: originalRank,
-				layaTruncated: truncated,
-				layaAbstractMissing: !text(candidate.abstract),
+				kevScore: score,
+				kevChoice: choice,
+				kevOriginalRank: originalRank,
+				kevSuggestedRank: suggestedRank,
+				kevRankDelta: originalRank - suggestedRank,
+				kevTruncated: truncated,
+				kevAbstractMissing: !text(candidate.abstract),
 			}));
-		const sourceOrder = [...scored]
+		const sourceOrder = [...kevSuggestedRows]
 			.sort((left, right) => left.originalRank - right.originalRank)
-			.map(({ candidate, choice, originalRank, score, truncated }) => ({
+			.map(({ candidate, choice, originalRank, score, truncated, suggestedRank }) => ({
 				...candidate,
-				layaScore: score,
-				layaChoice: choice,
-				layaOriginalRank: originalRank,
-				layaTruncated: truncated,
-				layaAbstractMissing: !text(candidate.abstract),
+				kevScore: score,
+				kevChoice: choice,
+				kevOriginalRank: originalRank,
+				kevSuggestedRank: suggestedRank,
+				kevRankDelta: originalRank - suggestedRank,
+				kevTruncated: truncated,
+				kevAbstractMissing: !text(candidate.abstract),
 			}));
-		const device = text(devices[model]);
+		const device = text(initialCard.device);
 		const abstractMissingCount = candidates.filter((candidate) => !text(candidate.abstract)).length;
 		const durationMs = Math.round(performance.now() - startedAt);
-		return withStatus({ ...result, results: sourceOrder, layaSuggestedOrder }, {
+		return withStatus({ ...result, results: sourceOrder, kevSuggestedOrder }, {
 			state: "advisory",
-			message: `Laya scored ${layaSuggestedOrder.length} papers; source order was preserved and a separate suggested order is available.`,
+			message: `Kev scored ${kevSuggestedOrder.length} papers; source order was preserved and a separate suggested order is available.`,
 			abstractMissingCount,
 			...(device ? { device } : {}),
 			durationMs,
-			revision,
-			scoredCandidates: layaSuggestedOrder.length,
+			checkpoint,
+			scoredCandidates: kevSuggestedOrder.length,
 			truncatedCandidates,
 		});
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : "request failed";
 		return withStatus(result, {
 			state: "unavailable",
-			message: `Laya was unavailable (${reason}); original order was retained.`,
+			message: `Kev was unavailable (${reason}); original order was retained.`,
 			durationMs: Math.round(performance.now() - startedAt),
 		});
 	}

@@ -88,7 +88,7 @@ Skip this step and install later with `hypatia packages install <preset>`; remov
 
 ## alphaXiv and preview
 
-Setup then offers to sign you in to alphaXiv (same as `hypatia alpha login`) and to install pandoc for Markdown-to-HTML/PDF preview (same as `hypatia setup preview`).
+Setup then offers optional AlphaXiv sign-in for agentic search, PDF Q&A, and GitHub code reading (same as `hypatia alpha login`); public search and paper reading work without it. Setup can also install pandoc for Markdown-to-HTML/PDF preview (same as `hypatia setup preview`).
 
 ## Editor integration (ACP)
 

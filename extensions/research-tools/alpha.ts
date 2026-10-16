@@ -3,15 +3,25 @@ import {
 	annotatePaper,
 	clearPaperAnnotation,
 	disconnect,
-	getPaper,
 	isLoggedIn,
 	listPaperAnnotations,
+	normalizePaperId,
+	readAnnotation,
 	readPaperCode,
 	searchPapers,
 } from "@companion-ai/alpha-hub/lib";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
+import {
+	alphaXivPaperUrl,
+	alphaXivSearchPayload,
+	discoverPublicAlphaXiv,
+	findPublicAlphaXivImplementations,
+	readPublicAlphaXivPaper,
+	searchPublicAlphaXivFast,
+} from "../../src/alpha-public.js";
+import type { AlphaXivDiscoveryOptions, AlphaXivSearchMode, AlphaXivSearchPriority } from "../../src/alpha-public.js";
 import { extractPaperSections } from "./alpha-sections.js";
 import { searchArxiv } from "./science-database-arxiv.js";
 import { searchOpenAlex } from "./science-database-openalex.js";
@@ -21,6 +31,30 @@ import { createPaperSearchRenderers } from "./paper-search-renderer.js";
 function formatText(value: unknown): string {
 	if (typeof value === "string") return value;
 	return JSON.stringify(value, null, 2);
+}
+
+async function searchPublicAlphaXiv(
+	query: string,
+	mode: AlphaXivSearchMode,
+	options: AlphaXivDiscoveryOptions = {},
+) {
+	if (mode === "title") {
+		const hits = await searchPublicAlphaXivFast(query);
+		return alphaXivSearchPayload(query, mode, hits, undefined, options.limit);
+	}
+	if (mode === "both") {
+		const [semantic, keyword] = await Promise.all([
+			discoverPublicAlphaXiv(query, "embedding", options),
+			discoverPublicAlphaXiv(query, "keyword", options),
+		]);
+		return alphaXivSearchPayload(query, mode, semantic, keyword, options.limit);
+	}
+	const hits = await discoverPublicAlphaXiv(query, mode === "keyword" ? "keyword" : "embedding", options);
+	return alphaXivSearchPayload(query, mode, hits, undefined, options.limit);
+}
+
+function paperTitle(content: string): string | undefined {
+	return content.match(/^#\s+(.+)\s*$/mu)?.[1]?.trim();
 }
 
 // alphaXiv's API has changed without notice before; when a call fails, point
@@ -64,33 +98,92 @@ export function registerAlphaTools(pi: ExtensionAPI, signedIn = isLoggedIn()): v
 	pi.on("session_shutdown", async () => {
 		await disconnect();
 	});
-	// Search, paper, Q&A, and code tools need an alphaXiv account. Without one,
-	// every call failed, so leave them out and let the model use the other
-	// paper sources. Annotations are local and stay available.
+	// Search and paper reading use AlphaXiv's public endpoints. Agentic retrieval,
+	// PDF Q&A, and repository reading still use account-backed alpha-hub tools.
 	const registerAccountTool: ExtensionAPI["registerTool"] = signedIn ? (tool) => pi.registerTool(tool) : () => {};
 
-	registerAccountTool({
+	pi.registerTool({
 		name: "alpha_search",
 		label: "Alpha Search",
 		...createPaperSearchRenderers("alpha"),
 		description:
-			"Search research papers through alphaXiv. Modes: semantic (default, use 2-3 sentence queries), keyword (exact terms), agentic (broad multi-turn retrieval), both, or all.",
+			"Search papers through AlphaXiv's public endpoints without login. Modes: semantic (default), keyword, both, or title (fast title lookup). Discovery modes accept publication-date filters, ranking, and an output limit; title mode accepts an output limit. Agentic and all modes use account-backed retrieval and require `hypatia alpha login`.",
 		parameters: Type.Object({
 			query: Type.String({ description: "Search query." }),
 			mode: Type.Optional(
-				Type.String({ description: "Search mode: semantic, keyword, both, agentic, or all." }),
+				Type.Union([
+					Type.Literal("semantic"),
+					Type.Literal("keyword"),
+					Type.Literal("both"),
+					Type.Literal("title"),
+					Type.Literal("agentic"),
+					Type.Literal("all"),
+				], { description: "Search mode: semantic, keyword, both, title, agentic, or all." }),
 			),
+			publishedAfter: Type.Optional(Type.String({ description: "Include papers first published on or after YYYY-MM-DD." })),
+			publishedBefore: Type.Optional(Type.String({ description: "Include papers first published on or before YYYY-MM-DD." })),
+			prioritize: Type.Optional(Type.Union([
+				Type.Literal("historical"),
+				Type.Literal("default"),
+				Type.Literal("recency"),
+				Type.Literal("popular"),
+			], { description: "Ranking policy after topical relevance: historical, default, recency, or popular." })),
+			limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 200, description: "Maximum results per result group (default 15; maximum 200)." })),
 		}),
 		async execute(_toolCallId, params) {
-			const result = await withPaperFallback(() => searchPapers(params.query, params.mode?.trim() || "semantic"), {
-				source: "OpenAlex semantic search",
-				run: () => searchOpenAlex({ source: "openalex", query: `semantic: ${params.query}`, limit: 10 }),
-			});
+			const mode = params.mode?.trim().toLowerCase() || "semantic";
+			if (!["semantic", "keyword", "both", "title", "agentic", "all"].includes(mode)) {
+				throw new Error("Choose semantic, keyword, both, title, agentic, or all search mode.");
+			}
+			if (mode === "title" && (params.publishedAfter || params.publishedBefore || params.prioritize)) {
+				throw new Error("Date filters and ranking policies apply to semantic/keyword discovery, not fast title search.");
+			}
+			if ((mode === "agentic" || mode === "all") && (params.publishedAfter || params.publishedBefore || params.prioritize || params.limit !== undefined)) {
+				throw new Error("Date filters, ranking, and limits are available on public search modes only.");
+			}
+			const searchOptions: AlphaXivDiscoveryOptions = {
+				...(params.publishedAfter ? { publishedAfter: params.publishedAfter } : {}),
+				...(params.publishedBefore ? { publishedBefore: params.publishedBefore } : {}),
+				...(params.prioritize ? { prioritize: params.prioritize as AlphaXivSearchPriority } : {}),
+				...(params.limit !== undefined ? { limit: params.limit } : {}),
+			};
+			const result = mode === "agentic" || mode === "all"
+				? await withPaperFallback(() => {
+						if (!signedIn) throw new Error("This search mode requires an AlphaXiv account. Run `hypatia alpha login`; semantic and keyword search are available without login.");
+						return searchPapers(params.query, mode);
+					}, {
+						source: "OpenAlex semantic search",
+						run: () => searchOpenAlex({ source: "openalex", query: `semantic: ${params.query}`, limit: 10 }),
+					})
+				: await withPaperFallback(() => {
+						return searchPublicAlphaXiv(params.query, mode as AlphaXivSearchMode, searchOptions);
+					}, {
+						source: mode === "title" ? "OpenAlex paper search" : `OpenAlex ${mode === "keyword" ? "keyword" : "semantic"} search`,
+						run: () => searchOpenAlex({
+							source: "openalex",
+							query: mode === "title" ? params.query : `${mode === "keyword" ? "keyword" : "semantic"}: ${params.query}`,
+							limit: 10,
+						}),
+					});
 			return { content: [{ type: "text", text: formatText(result) }], details: result };
 		},
 	});
 
-	registerAccountTool({
+	pi.registerTool({
+		name: "alpha_find_implementations",
+		label: "Find Paper Implementations",
+		description:
+			"Find public GitHub repositories that AlphaXiv links to an arXiv paper. Returns repository URLs, stars, and whether AlphaXiv marks a repository as author-provided; it does not read repository files. No login required.",
+		parameters: Type.Object({
+			paper: Type.String({ description: "arXiv ID, arXiv URL, or AlphaXiv URL." }),
+		}),
+		async execute(_toolCallId, params) {
+			const result = await findPublicAlphaXivImplementations(params.paper);
+			return { content: [{ type: "text", text: formatText(result) }], details: result };
+		},
+	});
+
+	pi.registerTool({
 		name: "alpha_get_paper",
 		label: "Alpha Get Paper",
 		...createPaperReadRenderers(),
@@ -109,7 +202,19 @@ export function registerAlphaTools(pi: ExtensionAPI, signedIn = isLoggedIn()): v
 		}),
 		async execute(_toolCallId, params) {
 			const arxivId = ARXIV_ID.exec(params.paper.trim())?.[1];
-			const result = await withPaperFallback(() => getPaper(params.paper, { fullText: params.fullText }), arxivId ? {
+			const result = await withPaperFallback(async () => {
+				const paper = await readPublicAlphaXivPaper(params.paper, params.fullText === true);
+				const paperId = normalizePaperId(paper.paperId);
+				return {
+					paperId,
+					url: alphaXivPaperUrl(params.paper),
+					alphaXivUrl: `https://www.alphaxiv.org/overview/${paperId.split("/").map(encodeURIComponent).join("/")}`,
+					title: paperTitle(paper.content),
+					content: paper.content,
+					annotation: readAnnotation(paperId),
+					source: "alphaxiv",
+				};
+			}, arxivId ? {
 				source: "arXiv metadata and abstract (no full text or sections)",
 				run: () => searchArxiv({ query: arxivId }),
 			} : undefined);

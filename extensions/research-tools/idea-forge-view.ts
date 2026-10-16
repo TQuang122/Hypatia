@@ -14,6 +14,14 @@ const list = (value: unknown): string[] => Array.isArray(value) ? value.map(item
 		const detail = plain(finding.detail ?? finding.message ?? finding.reason, 800);
 		return [title, detail].filter(Boolean).join(": ");
 	}).filter(Boolean) : [];
+function knowledgeLines(run: Generation, direction: string, max = 300): string[] {
+	const displayDirection = run.spec.knowledgePaths?.length ? `${direction} + project wiki context` : direction;
+	const label = run.spec.knowledgePaths?.length ? "selected project wiki bundle" : run.spec.knowledgePath ?? "built-in guidance";
+	return [
+		`- Knowledge: ${plain(displayDirection, max)} · ${plain(label, 500)}`,
+		...(run.spec.knowledgePaths?.length ? (run.spec.knowledgeSources ?? []).map(source => `  - ${plain(source.path, 400)} · sha256 ${plain(source.hash, 64).slice(0, 12)}`) : []),
+	];
+}
 export function formatIdeaProposal(run: Generation, idea: IdeaChoice): string {
 	const validation = record(idea.validation), consensus = record(idea.consensus);
 	const direction = run.spec.backend.directions.find(item => item.id === idea.direction)?.title ?? idea.direction;
@@ -31,7 +39,7 @@ export function formatIdeaProposal(run: Generation, idea: IdeaChoice): string {
 		"## Context",
 		`- Topic: ${plain(run.spec.topic, 500)}`,
 		`- Signal: ${plain(run.spec.signal, 1500)}`,
-		`- Knowledge: ${plain(direction, 200)}`,
+		...knowledgeLines(run, direction, 200),
 		`- Source: ${plain(run.spec.sourceUrl, 500) || "User-provided signal; not independently verified"}`,
 		`- Proposing model: ${plain(idea.sourceModel, 200) || "not reported"}`,
 		"",
@@ -66,7 +74,7 @@ export function formatGenerationStatus(run: Generation, status: {
 		"",
 		"## Contract",
 		`- Topic: ${plain(run.spec.topic, 500)}`,
-		`- Knowledge: ${plain(direction, 200)}`,
+		...knowledgeLines(run, direction, 200),
 		`- Models: ${run.spec.modelPanel.map(model => plain(model, 200)).join(", ")}`,
 		`- Source: ${plain(run.spec.sourceUrl, 500) || "user-provided signal; not independently verified"}`,
 		"",
@@ -97,7 +105,7 @@ export function formatGenerationApproval(run: Generation, inferred: readonly str
 		"## Model panel and guidance",
 		`- Panel: ${run.spec.modelPanel.map(model => `\`${plain(model, 200)}\``).join(", ")}`,
 		`- Review: ${run.spec.modelPanel.length === 1 ? "single-model critique; not independent" : "distinct model identities; reviews are advisory"}`,
-		`- Knowledge: ${plain(direction, 300)}${run.spec.knowledgePath ? ` · ${plain(run.spec.knowledgePath, 400)}` : " · built-in guidance"}`,
+		...knowledgeLines(run, direction),
 		`- Source: ${plain(run.spec.sourceUrl, 600) || "user-provided signal; not independently verified"}`,
 		"",
 		"## Resources",

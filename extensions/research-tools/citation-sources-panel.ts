@@ -1,5 +1,5 @@
 import type { Theme } from "@earendil-works/pi-coding-agent";
-import { Input, Key, matchesKey, truncateToWidth, visibleWidth, type Component, type Focusable, type TUI } from "@earendil-works/pi-tui";
+import { Input, Key, matchesKey, truncateToWidth, visibleWidth, type Component, type Focusable, type TUI, type TuiMouseEvent, type TuiMouseEventResult } from "@earendil-works/pi-tui";
 import type { CitationSource } from "./citation-sources.js";
 
 type PanelTUI = Pick<TUI, "requestRender"> & { terminal: Pick<TUI["terminal"], "rows"> };
@@ -81,6 +81,13 @@ export class CitationSourcesPanel implements Component, Focusable {
 		this.clampSelection(); this.tui.requestRender();
 	}
 
+	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+		if (event.type !== "wheel" || event.wheelDelta === undefined) return undefined;
+		this.selectedIndex += Math.trunc(event.wheelDelta);
+		this.clampSelection();
+		return { handled: true, render: true };
+	}
+
 	private pageSize(): number { return Math.max(1, Math.min(5, this.tui.terminal.rows - 14)); }
 
 	private clampSelection(): void {
@@ -133,7 +140,7 @@ export class CitationSourcesPanel implements Component, Focusable {
 				: theme.fg("dim", "Verification  not stated in the answer"), width, theme),
 		] : [];
 		const filter = this.editingFilter ? this.filter.render(Math.max(1, width - 4))[0] ?? "" : `${theme.fg("accent", "/")} ${theme.fg("muted", "filter sources")}${this.filterText ? ` · ${theme.fg("text", this.filterText)}` : ""}`;
-		const help = width < 60 ? "↑↓ move · Enter open · c copy · / filter · Esc close" : "↑↓/PgUp/PgDn move · Enter open · c copy URL · / filter · Esc close";
+		const help = width < 75 ? "↑↓/wheel move · Enter open · c URL · / filter · Esc" : "↑↓/wheel move · PgUp/PgDn · Enter open · c copy URL · / filter · Esc close";
 		return [
 			top,
 			this.row(filter, width, theme),

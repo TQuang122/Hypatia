@@ -3,7 +3,7 @@ import { Text, truncateToWidth, visibleWidth, type Component } from "@earendil-w
 
 import { formatToolDuration } from "./render-utils.js";
 
-type SearchKind = "alpha" | "database" | "laya";
+type SearchKind = "alpha" | "database" | "kev";
 type PaperPreview = { title: string; year?: string; identifier?: string };
 type SummaryRow = { color: ThemeColor; text: string; preview?: PaperPreview };
 type ToolRenderContext = Parameters<NonNullable<ToolDefinition["renderResult"]>>[3];
@@ -193,7 +193,7 @@ export function createPaperSearchRenderers(kind: SearchKind) {
 		renderCall(args: Record<string, unknown>, theme: Theme, context: ToolRenderContext): Component {
 			const source = sourceLabel(kind === "alpha" ? "alphaxiv" : args.source) || "database";
 			const query = singleLine(args.query);
-			const title = kind === "laya" ? "Laya advisory" : "Search";
+			const title = kind === "kev" ? "Kev advisory" : "Search";
 			return summary([{ color: "toolTitle", text: `${title} · ${source}${query ? ` · ${query}` : ""}` }], theme, context);
 		},
 		renderResult(result: AgentToolResult<unknown>, options: ToolRenderResultOptions, theme: Theme, context: ToolRenderContext): Component {
@@ -209,8 +209,8 @@ export function createPaperSearchRenderers(kind: SearchKind) {
 			const payload = record(result.details);
 			const fallback = singleLine(payload.fallbackNote);
 			const note = singleLine(payload.note);
-			const layaStatus = record(payload.layaStatus);
-			const layaMessage = singleLine(layaStatus.message);
+			const kevStatus = record(payload.kevStatus);
+			const kevMessage = singleLine(kevStatus.message);
 			const requested = sourceLabel(kind === "alpha" ? "alphaxiv" : record(context.args).source);
 			const delivered = sourceLabel(payload.source) || (kind === "alpha" && !fallback && !context.isError ? "alphaXiv" : "");
 			const source = delivered || (requested ? `${requested} (requested)` : "source unavailable");
@@ -228,7 +228,7 @@ export function createPaperSearchRenderers(kind: SearchKind) {
 				const color: ThemeColor = options.isPartial || fallback || note ? "warning" : "success";
 				rows.push({ color, text: `${state} · ${source} · ${count ?? (options.isPartial ? "awaiting results" : "results available")}${options.isPartial && count ? " so far" : ""}${durationSuffix}` });
 				if (fallback || note) rows.push({ color: "warning", text: fallback || note });
-				if (layaMessage) rows.push({ color: layaStatus.state === "advisory" || layaStatus.state === "reranked" ? "dim" : "warning", text: layaMessage });
+				if (kevMessage) rows.push({ color: kevStatus.state === "advisory" || kevStatus.state === "reranked" ? "dim" : "warning", text: kevMessage });
 				for (const preview of previews) rows.push({ color: "text", text: "", preview });
 				if (previews.length) rows.push({ color: "dim", text: "Ctrl+O for full result details" });
 			}

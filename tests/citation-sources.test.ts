@@ -46,6 +46,19 @@ test("sources panel filters, opens and copies the selected citation within the t
 	assert.deepEqual(copied, ["https://arxiv.org/abs/2401.12345"]);
 });
 
+test("sources panel wheel navigates selected citations and clamps at the list ends", () => {
+	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text, style: (text: string) => text, colors: { selectedBg: "", customMessageBg: "" } } as any;
+	const panel = new CitationSourcesPanel({ terminal: { rows: 28 }, requestRender() {} }, {
+		sources: Array.from({ length: 8 }, (_, index) => ({ title: `Paper ${index + 1}`, url: `https://example.org/${index + 1}` })),
+		theme: () => theme, copyUrl: async () => {}, openUrl: () => {}, done() {},
+	});
+	assert.match(panel.render(72).join("\n"), /1\/8/u);
+	assert.deepEqual(panel.handleMouse({ type: "wheel", wheelDelta: 2 } as any), { handled: true, render: true });
+	assert.match(panel.render(72).join("\n"), /3\/8/u);
+	panel.handleMouse({ type: "wheel", wheelDelta: -9 } as any);
+	assert.match(panel.render(72).join("\n"), /1\/8/u);
+});
+
 test("sources panel filter narrows the list without assigning an unstated verification status", () => {
 	const theme = { fg: (_color: string, text: string) => text, bold: (text: string) => text, style: (text: string) => text, colors: { selectedBg: "", customMessageBg: "" } } as any;
 	const panel = new CitationSourcesPanel({ terminal: { rows: 28 }, requestRender() {} }, {

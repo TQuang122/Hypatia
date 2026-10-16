@@ -21,7 +21,7 @@ These are npm dependencies of Hypatia, installed with it and loaded unmodified f
 | `pi-web-access` | `web_search`, `source_check`, `fetch_content`, and `get_search_content` for web search and page, PDF, and GitHub retrieval |
 | `pi-docparser` | `document_parse`, `document_search`, and `document_screenshot` for local PDFs, Office documents, spreadsheets, and images |
 | `pi-btw` | `/btw` side conversations while the main research agent is busy |
-| `@companion-ai/alpha-hub` | alphaXiv client library behind Hypatia's `alpha_*` tools and `hypatia alpha` |
+| `@companion-ai/alpha-hub` | Optional account-backed alphaXiv features in Hypatia: agentic search, PDF Q&A, and GitHub code reading |
 
 They update when you upgrade Hypatia. You do not need to install them individually.
 
@@ -31,8 +31,8 @@ Hypatia's own extension registers these tools and commands:
 
 | Group | Contents |
 | --- | --- |
-| AlphaXiv tools | `alpha_search`, `alpha_get_paper`, `alpha_ask_paper`, `alpha_read_code`, `alpha_annotate_paper`, `alpha_list_annotations` |
-| Science database search | `hypatia_science_database_search` over Semantic Scholar, OpenAlex, arXiv IDs, PubMed, Europe PMC, bioRxiv/medRxiv, Crossref, CORE, and DOAB; `hypatia_laya_advisory` optionally scores an existing topical result set without changing its order |
+| AlphaXiv tools | `alpha_search`, `alpha_get_paper`, `alpha_find_implementations`, `alpha_ask_paper`, `alpha_read_code`, `alpha_annotate_paper`, `alpha_list_annotations` |
+| Science database search | `hypatia_science_database_search` over Semantic Scholar, OpenAlex, arXiv IDs, PubMed, Europe PMC, bioRxiv/medRxiv, Crossref, CORE, and DOAB; `hypatia_kev_advisory` optionally scores an existing topical result set and reports signed rank deltas without changing its order |
 | Hugging Face Hub tools | `hf_dataset_info`, `hf_repo_files`, `hf_repo_read_file` |
 | Commands | `/help`, `/init`, `/outputs`, `/model-routes`, `/tools`, `/service-tier` |
 
@@ -83,4 +83,4 @@ Core packages are not touched by `hypatia update` because they ship with Hypatia
 
 ## Runtime versions
 
-The package manifest targets Pi 1.1.0 and bundles `pi-subagents` 0.77.0, `pi-web-access` 0.38.0, `pi-docparser` 4.0.0, `pi-btw` 0.8.0, and Alpha Hub 0.1.6. Pi is declared through peer dependencies; the other packages are installed with Hypatia and loaded unmodified. Every release is checked by booting the installed CLI in Pi RPC mode on Linux, macOS, and Windows.
+The package manifest targets Pi 1.3.0 and bundles `pi-subagents` 0.78.0, `pi-web-access` 0.41.0, `pi-docparser` 4.0.0, `pi-btw` 0.8.0, and Alpha Hub 0.1.7. Pi is declared through peer dependencies; the other packages are installed with Hypatia and loaded unmodified. `pi-subagents` 0.78.0 restores background scout startup on Pi 1.2 and works with the Pi 1.3 package set. Pi's published theme schema enables editor validation/completion and startup validation. Every release is checked by booting the installed CLI in Pi RPC mode on Linux, macOS, and Windows.

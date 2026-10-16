@@ -7,6 +7,7 @@ import test from "node:test";
 import { initTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { rgbColor, visibleWidth, type TuiMouseEvent } from "@earendil-works/pi-tui";
 import { canPreviewOutput, collectOutputArtifacts, MAX_OUTPUT_PREVIEW_BYTES, readOutputPreview, relatedOutput, type OutputPreview } from "../extensions/research-tools/output-artifacts.js";
+import { OutputBrowserPanel } from "../extensions/research-tools/output-browser.js";
 import { OutputReader, type OutputReaderTheme, type OutputReaderTUI } from "../extensions/research-tools/output-reader.js";
 import { registerOutputsCommand, runOutputsCommand, type OutputsCommandContext } from "../extensions/research-tools/outputs.js";
 
@@ -97,6 +98,9 @@ test("previews are bounded, neutralize terminal controls, and leave the original
 	assert.equal(preview.content.includes("\x1b"), false);
 	assert.equal(preview.content.includes("injected-title"), false);
 	assert.equal(await readFile(join(root, "outputs/report.md"), "utf8"), source);
+	const excerpt = await readOutputPreview(root, items.find((item) => item.path === join("outputs", "report.md"))!, { maxBytes: 4, truncate: true });
+	assert.equal(excerpt.content, "# Re");
+	assert.equal(excerpt.truncated, true);
 	await assert.rejects(readOutputPreview(root, items.find((item) => item.path === join("outputs", "large.md"))!), /2 MiB/);
 	const pdf = items.find((item) => item.path === join("outputs", "huge.pdf"))!;
 	assert.equal(pdf.size, 128 * 1024 * 1024);
@@ -119,6 +123,88 @@ test("artifact browsing skips symlinks and a stale preview cannot escape the wor
 	assert.equal(items.some((item) => item.path.endsWith("link.md")), false);
 	const artifact = items.find((item) => item.path === join("outputs", "report.md"))!;
 	await assert.rejects(readOutputPreview(root, { ...artifact, fullPath: join(outside, "external.md") }), /outside/);
+});
+
+test("outputs opens a grouped artifact browser with a report preview", async (t) => {
+	const root = await workspace(t);
+	await writeFile(join(root, "outputs/topic.md"), "# Topic report\nReport body preview.");
+	await writeFile(join(root, "outputs/topic.provenance.md"), "# Provenance\nVerified source record.");
+	let selectCalls = 0;
+	let rendered = "";
+	let customOptions: unknown;
+	const ctx = {
+		mode: "tui", hasUI: true, cwd: root,
+		ui: {
+			theme,
+			select: async () => { selectCalls += 1; return undefined; },
+			notify() {},
+			setEditorText() {},
+			custom: async <T>(factory: (...args: any[]) => any, options?: unknown): Promise<T> => {
+				customOptions = options;
+				let result: T | undefined;
+				const panel = factory(
+					{ terminal: { rows: 28, columns: 120 }, requestRender() {} },
+					theme,
+					{},
+					(value: T) => { result = value; },
+				);
+				rendered = plain(panel.render(120).join("\n"));
+				panel.handleInput("\x1b");
+				return result as T;
+			},
+		},
+	} as unknown as OutputsCommandContext;
+
+	await runOutputsCommand(ctx);
+
+	assert.equal(selectCalls, 0);
+	assert.deepEqual(customOptions, { overlay: true, overlayOptions: { anchor: "center", width: "96%", maxHeight: "88%", margin: 1 } });
+	assert.match(rendered, /Reports/u);
+	assert.match(rendered, /Provenance/u);
+	assert.match(rendered, /Topic report/u);
+	assert.match(rendered, /Report body preview/u);
+});
+
+test("outputs browser filters, scrolls, pairs provenance, and stays within narrow and wide terminals", async (t) => {
+	const root = await workspace(t);
+	await writeFile(join(root, "outputs/alpha.md"), "# Alpha report\nAlpha preview.");
+	await writeFile(join(root, "outputs/alpha.provenance.md"), "# Alpha provenance\nSource record.");
+	await writeFile(join(root, "outputs/beta.md"), "# Beta report\nBeta preview.");
+	const items = await collectOutputArtifacts(root);
+	const report = items.find((item) => item.path === join("outputs", "beta.md"))!;
+	const initialPreview = await readOutputPreview(root, report, { maxBytes: 12 * 1024, truncate: true });
+	const actions: any[] = [];
+	const panel = new OutputBrowserPanel({ terminal: { rows: 28 }, requestRender() {} }, {
+		items,
+		state: { group: "Reports", selectedPath: report.path, query: "" },
+		initialPreview,
+		loadPreview: (artifact) => readOutputPreview(root, artifact, { maxBytes: 12 * 1024, truncate: true }),
+		copyPath: async () => {},
+		theme: () => theme,
+		done: (action) => actions.push(action),
+	});
+
+	assert.match(plain(panel.render(120).join("\n")), /Beta report/u);
+	const wheel: TuiMouseEvent = {
+		type: "wheel", button: "none", x: 0, y: 0, screenX: 0, screenY: 0,
+		width: 120, height: 28, shift: false, alt: false, ctrl: false, wheelDelta: 1,
+	};
+	assert.deepEqual(panel.handleMouse(wheel), { handled: true, render: true });
+	assert.match(plain(panel.render(120).join("\n")), /› Alpha report/u);
+	panel.handleInput("/");
+	panel.handleInput("Alpha");
+	panel.handleInput("\r");
+	assert.match(plain(panel.render(120).join("\n")), /1\/2/u);
+	panel.handleInput("p");
+	assert.match(plain(panel.render(70).join("\n")), /Provenance/u);
+	for (const width of [40, 70, 120]) {
+		for (const line of panel.render(width)) assert.ok(visibleWidth(line) <= width, `${width}: ${plain(line)}`);
+	}
+	panel.handleInput("\r");
+	assert.equal(actions[0]?.type, "open");
+	assert.equal(actions[0]?.artifact.path, join("outputs", "alpha.provenance.md"));
+	assert.equal(actions[0]?.state.group, "Provenance");
+	panel.dispose();
 });
 
 function reader(content: string, markdown = false, terminalRows = 24, copyPath?: () => Promise<void>) {
@@ -199,7 +285,7 @@ test("search cancellation, mouse scrolling, and clipboard failure keep the reade
 	assert.match(plain(failed.view.render(80).join("\n")), /Copy failed: clipboard unavailable/);
 });
 
-test("outputs opens report and provenance directly, copies the selected path, and preserves the composer", async (t) => {
+test("outputs browser opens report and provenance, copies a path, and preserves the composer", async (t) => {
 	const root = await workspace(t);
 	await writeFile(join(root, "outputs/topic.md"), "# Report body\nA result.");
 	await writeFile(join(root, "outputs/topic.provenance.md"), "# Provenance body\nRecorded source.");
@@ -212,7 +298,8 @@ test("outputs opens report and provenance directly, copies the selected path, an
 	registerOutputsCommand(api);
 	assert.equal(commandName, "outputs");
 	let selection = 0;
-	const ctx: OutputsCommandContext = {
+	let customCalls = 0;
+	const ctx = {
 		mode: "tui", hasUI: true, cwd: root,
 		ui: {
 			theme,
@@ -224,36 +311,42 @@ test("outputs opens report and provenance directly, copies the selected path, an
 				options?: CustomOptions,
 			): Promise<T> => {
 				customOptions.push(options);
+				customCalls += 1;
 				let result: T | undefined;
 				const signals = renderSignals();
 				const tui: OutputReaderTUI = { terminal: { rows: 24 }, requestRender: () => signals.events.emit("render") };
 				const view = factory(tui, theme, undefined, (value) => { result = value; });
 				const rendered = view.render(80);
 				views.push(plain(rendered.join("\n")));
-				viewLines.push(rendered);
-				if (views.length === 1) view.handleInput("p");
-				else {
+				if (views.length > 1 && views.length < 4) viewLines.push(rendered);
+				if (views.length === 1) view.handleInput(String.fromCharCode(13));
+				else if (views.length === 2) view.handleInput("p");
+				else if (views.length === 3) {
 					const copyRendered = signals.waitForRenders(2);
 					view.handleInput("c");
 					await copyRendered;
-					view.handleInput("\x1b");
-				}
+					view.handleInput(String.fromCharCode(27));
+				} else view.handleInput(String.fromCharCode(27));
 				assert.ok(result);
 				return result;
 			},
 		},
-	};
+	} as unknown as OutputsCommandContext;
 	await runOutputsCommand(ctx, async (path) => { copied.push(path); });
 	assert.match(views[0], /Report body/);
-	assert.match(views[1], /Provenance body/);
+	assert.match(views[1], /Report body/);
+	assert.match(views[2], /Provenance body/);
+	assert.equal(views.length, 4);
 	assert.ok(viewLines.every((lines) => lines.length === 24));
 	assert.ok(viewLines.every((lines) => lines.every((line) => visibleWidth(line) === 80)));
 	assert.ok(viewLines.every((lines) => lines.every((line) => line.startsWith("\x1b[48;5;24m") && line.endsWith("\x1b[49m"))));
 	assert.deepEqual(copied, [join(root, "outputs/topic.provenance.md")]);
-	assert.deepEqual(customOptions.map((options) => options?.overlay), [true, true]);
+	assert.deepEqual(customOptions.map((options) => options?.overlay), [true, true, true, true]);
 	assert.deepEqual(customOptions.map((options) => options?.overlayOptions), [
+		{ anchor: "center", width: "96%", maxHeight: "88%", margin: 1 },
 		{ anchor: "center", width: "100%", maxHeight: "100%", margin: 0 },
 		{ anchor: "center", width: "100%", maxHeight: "100%", margin: 0 },
+		{ anchor: "center", width: "96%", maxHeight: "88%", margin: 1 },
 	]);
 });
 
@@ -261,18 +354,25 @@ test("unsupported files keep the chat fallback and RPC avoids interactive UI", a
 	const root = await workspace(t);
 	const path = join("outputs", process.platform === "win32" ? "report with spaces.pdf" : 'report "with spaces".pdf');
 	await writeFile(join(root, path), "%PDF");
-	let selection = 0, prompt = "", warnings = 0;
-	const ctx: OutputsCommandContext = {
+	let prompt = "", warnings = 0, customCalls = 0;
+	const ctx = {
 		mode: "tui", hasUI: true, cwd: root,
 		ui: {
-			select: async (_title: string, options: string[]) => selection++ < 2 ? options[0] : "Read in chat",
+			theme,
 			setEditorText: (value: string) => { prompt = value; },
 			notify: () => { warnings += 1; },
-			custom: async <T>(): Promise<T> => { throw new Error("PDFs must not be treated as text previews"); },
+			custom: async <T>(factory: (...args: any[]) => any): Promise<T> => {
+				customCalls += 1;
+				let result: T | undefined;
+				const panel = factory({ terminal: { rows: 24 }, requestRender() {} }, theme, undefined, (value: T) => { result = value; });
+				panel.handleInput("r");
+				return result as T;
+			},
 		},
-	};
+	} as unknown as OutputsCommandContext;
 	await runOutputsCommand(ctx);
 	assert.ok(prompt.includes(JSON.stringify(path)));
 	await runOutputsCommand({ ...ctx, mode: "rpc" });
 	assert.equal(warnings, 1);
+	assert.equal(customCalls, 1);
 });

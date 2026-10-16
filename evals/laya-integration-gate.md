@@ -56,3 +56,11 @@ The fine-tuning report also records a temperature of 5 (the calibration clamp) f
 - Any health, timeout, HTTP, truncation, or response-validation failure preserves the full original order and returns a visible status explaining that Laya advice is unavailable.
 - Automatic result reordering remains disabled until every frozen default-on quality and latency criterion passes.
 - Candidate text is sent only to the configured loopback service. Telemetry must not include query text, titles, abstracts, or tool arguments.
+
+## Assistant fallback re-evaluation (2026-10-13)
+
+The user did not provide the 20 final grades after the review request timed out, then explicitly asked to proceed on best judgment. The original human review sheet remains blank. A separate assistant fallback was used for the rerun; it is neither a user annotation nor a fully blind adjudication because the coordinator had previously seen the human labels. Raw primary and duplicate labels remain unchanged, and the assistant resolutions are traceable in `outputs/laya-hypatia-20-assistant-review.jsonl` and `outputs/laya-hypatia-30-assistant-final-labels-summary.json`.
+
+The 582-candidate holdout was scored with the same frozen CPU checkpoint (`local-sha256:67ff5dc22c7144cad62848683f9eb7a624cffcb55a6ead2c3ee181bf45495294`). No training or tuning used the holdout. Macro nDCG@10 was 0.7417 versus 0.7578 for OpenAlex order (delta -0.0161); the query-bootstrap 95% interval was [-0.0440, 0.0123]. Four of 30 queries regressed by at least 0.10 (13.3%). All 582 candidates were scored; four were truncated (0.69%). The 30-trial warm 20-candidate p95 was 1.516 seconds with all requests successful. Session-cluster sensitivity over ten clusters was [-0.0358, -0.0037].
+
+The quality delta, confidence-interval, and query-regression criteria fail. Keep Laya advisory-only and disabled by default. Artifacts: `outputs/laya-hypatia-30-assistant-final-results.json`, `outputs/laya-hypatia-30-assistant-final-latency-retry.json`, and `outputs/laya-hypatia-30-assistant-session-bootstrap.json`.

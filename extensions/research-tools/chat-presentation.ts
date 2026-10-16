@@ -202,6 +202,7 @@ function formatAssistantMarkdown(markdown: string, context: MarkdownTransformCon
 	let formatted = transformMarkdownLines(markdown, (line) =>
 		compactHeadingHashes(styleInlineCitationMarkers(replaceRawCitationUrls(line, hyperlinks), theme)));
 	if (!context.isStreaming) formatted = formatCitationEntries(formatted, theme);
+	// Keep display math out of blockquotes because Pi renders quote content in italics.
 	return styleVerificationCallouts(formatted, theme);
 }
 

@@ -49,7 +49,7 @@ export async function inspectNativeBackend(agentDir: string, panel?: string[], p
 export async function prepareNativeGeneration(workspace: string, input: GenerationInput, backend: Backend) {
   const current = await inspectNativeBackend(dirname(backend.authPath!), input.modelPanel);
   if (current.sourceHash !== backend.sourceHash || current.configHash !== backend.configHash) throw new Error("Hypatia runtime/model configuration changed after preflight.");
-  const knowledge = await nativeKnowledge(workspace, `${input.topic}\n${input.signal}`, input.direction || undefined, input.knowledgePath);
+  const knowledge = await nativeKnowledge(workspace, `${input.topic}\n${input.signal}`, input.direction || undefined, input.knowledgePath, input.knowledgePaths);
   return { current, knowledge };
 }
 export async function verifyNativeBackend(run: Generation, signal?: AbortSignal) {

@@ -4,9 +4,18 @@ This file is the public release history for Hypatia. Keep entries user-facing: w
 
 GitHub release notes are generated from the matching `## vX.Y.Z` section in this file.
 
-## Unreleased
+## v0.1.3 - 2026-10-16
 
-No unreleased changes.
+- **Reliable delegated research**: update `pi-subagents` to 0.78.0, which restores background scout startup on Pi 1.2 after 0.77.0 required a `chord` package that host removed.
+- **Current Pi and research packages**: align Pi AI, CLI, and TUI at 1.3.0; update `pi-web-access` to 0.41.0 and Alpha Hub to 0.1.7.
+- **Pi 1.3 TUI update**: keep Hypatia on matching core packages and the published theme schema. `/sources` and `/idea` lists navigate with the mouse wheel, and the Idea Forge selector fills the terminal width to keep transcript text from showing through its edges.
+- **Searchable `/outputs` browser**: browse reports, provenance, drafts, and other artifacts in one responsive TUI panel. Search by title or path, preview bounded text excerpts, switch to a matching report/provenance file, open the full reader, copy paths, or send a file path to chat.
+- **Readable chat equations**: display equations use Pi's native Unicode LaTeX layout with upright text styling. This changes only the chat presentation; saved transcript text and exports are unchanged.
+- **Project research wiki**: initialize a workspace-local Markdown knowledge base, including empty source/concept folders; ingest sources into reviewable proposals, query linked synthesis, and lint for broken links or missing evidence. Canonical wiki pages change only after explicit approval.
+- **Wiki context across research workflows**: `/lit`, `/deepresearch`, `/compare`, and `/replicate` consult relevant indexed pages read-only. Leads pass selected page paths, claim status, and original source URLs to evidence-scout briefs; scouts verify the originals and record pages consulted. `/idea` freezes up to 12 selected concept/source pages and their hashes in its approved knowledge bundle. Pending proposals are excluded.
+- **Expanded public AlphaXiv research**: semantic/keyword search now supports publication-date filters, ranking preferences, and result limits; fast title search and linked GitHub implementation lookup work without login. Public paper reading remains keyless; agentic search, PDF Q&A, and repository file reading still use optional account-backed tools.
+- **Kev-backed paper advisory**: Kev replaces Laya as the optional local scorer and uses Kev's TypeSafe System One API. The advisory remains explicit, opt-in, and source-order preserving; use `HYPATIA_KEV_*` settings.
+- **Transparent Kev advisory ranks**: each suggested result reports its source rank, suggested rank, signed displacement, and score; the primary source order is unchanged.
 
 ## v0.1.2 - 2026-10-13
 

@@ -11,17 +11,19 @@ The evidence-scout is Hypatia's evidence-gathering subagent. It searches paper d
 
 The evidence-scout receives a task brief from a workflow, searches broadly, then narrows using the terminology and names it finds. It runs 2–4 reworded queries for each question and merges the results instead of trusting one query's ranking.
 
+When the parent brief supplies project wiki leads, the scout reads only those accepted page paths. It treats wiki claims as navigation leads, checks the listed original source IDs/URLs before using them, and records the exact wiki paths and source URLs checked in a `Project wiki pages consulted` section of its output. It never reads pending proposals or edits canonical wiki pages.
+
 For broad deep research and literature review tasks, workflow prompts can run several evidence-scouts in parallel through one async workflow script, `outputs/.plans/<slug>-workflow.js`, using `await runs.all([{key, agent, task, output}, ...])` and run with `subagent({ workflow: "./outputs/.plans/<slug>-workflow.js" })`, each covering a different angle. The lead agent consumes the ordered results and verifies the declared output files before synthesis. Narrow tasks skip the evidence-scout and stay lead-owned.
 
 ## Tools
 
-The evidence-scout runs with high thinking and these tools: file and shell tools (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`), `web_search`, `fetch_content`, `get_search_content`, `hypatia_science_database_search`, and the Hugging Face tools `hf_dataset_info`, `hf_repo_files`, and `hf_repo_read_file`. It does not load the `alpha_*` tools; it uses `hypatia alpha search` through the shell when alphaXiv is logged in.
+The evidence-scout runs with high thinking and these tools: file and shell tools (`read`, `write`, `edit`, `bash`, `grep`, `find`, `ls`), `web_search`, `fetch_content`, `get_search_content`, `hypatia_science_database_search`, and the Hugging Face tools `hf_dataset_info`, `hf_repo_files`, and `hf_repo_read_file`. It does not load the `alpha_*` tools; it can use public semantic/keyword `hypatia alpha search` through the shell without login. Agentic search still needs an AlphaXiv account.
 
 ## Source routing
 
 | Need | First choice | Then |
 | --- | --- | --- |
-| General ML/CS papers | Semantic Scholar (citation-sorted) | `hypatia alpha search` when logged in |
+| General ML/CS papers | Semantic Scholar (citation-sorted) | Public `hypatia alpha search` |
 | Biomedical papers | PubMed, then Europe PMC for open-access full-text sections | Semantic Scholar for citation counts |
 | Citation graph | OpenAlex citations and references | Semantic Scholar citation counts |
 | Conceptual or recent work keyword search misses | OpenAlex semantic search | Semantic Scholar by relevance |

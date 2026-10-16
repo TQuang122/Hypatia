@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Key, type TUI } from "@earendil-works/pi-tui";
 import { initTheme, type ExtensionCommandContext, type Theme } from "@earendil-works/pi-coding-agent";
-import { formatGenerationStatus, formatIdeaProposal, IdeaForgeReader, showIdeaForgeReader } from "../extensions/research-tools/idea-forge-view.js";
+import { formatGenerationApproval, formatGenerationStatus, formatIdeaProposal, IdeaForgeReader, showIdeaForgeReader } from "../extensions/research-tools/idea-forge-view.js";
 import { viewGenerationStatus } from "../extensions/research-tools/idea-forge.js";
 
 const run = {
@@ -30,6 +30,15 @@ test("generation status includes request, cache, receipt and integrity details",
   assert.match(rendered, /Proposals: 1 · unverified/);
   assert.match(rendered, /checksum verified/);
   assert.match(rendered, /request journal and checkpoint verified/);
+});
+
+test("generation approval lists the exact wiki pages and hashes frozen into the contract", () => {
+  const wikiRun = { ...run, spec: { ...run.spec, knowledgePaths: ["wiki/concepts/rag-evaluation.md"], knowledgeSources: [{ path: "wiki/concepts/rag-evaluation.md", hash: "abcdef1234567890" }] } };
+  const rendered = formatGenerationApproval(wikiRun, []);
+  assert.match(rendered, /project wiki context/iu);
+  assert.match(rendered, /selected project wiki bundle/u);
+  assert.match(rendered, /wiki\/concepts\/rag-evaluation\.md/u);
+  assert.match(rendered, /sha256 abcdef123456/u);
 });
 
 test("reader provides scrolling controls and returns cleanly without submitting editor text", async () => {

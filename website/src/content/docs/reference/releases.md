@@ -7,8 +7,13 @@ order: 4
 
 This page summarizes what changed in recent Hypatia releases. GitHub releases use the same version-specific notes from the repository `RELEASES.md` file.
 
-## Unreleased
+## v0.1.3 - 2026-10-16
 
+- **Current research runtime**: align Pi AI, CLI, and TUI at 1.3.0; update `pi-subagents` to 0.78.0, `pi-web-access` to 0.41.0, and Alpha Hub to 0.1.7. The scout startup fix covers Pi 1.2, while Hypatia now targets the Pi 1.3 package set.
+- **Pi 1.3 TUI update**: keep Hypatia on matching core packages and the published theme schema. `/sources` and `/idea` lists navigate with the mouse wheel, and the Idea Forge selector fills the terminal width to keep transcript text from showing through its edges.
+- **Searchable `/outputs` browser**: reports, provenance, drafts, and other artifacts now share one responsive, searchable TUI panel with bounded previews and direct report/provenance pairing.
+- **Wiki context across research workflows**: `/lit`, `/deepresearch`, `/compare`, and `/replicate` consult relevant indexed pages read-only. Leads pass selected page paths, claim status, and original source URLs to evidence-scout briefs; scouts verify original sources and record pages consulted. `/idea` freezes selected concept/source pages and hashes in its approval contract; pending proposals are excluded.
+- **Readable chat equations**: display equations use Pi's native Unicode LaTeX layout with upright text styling. This is presentation-only; saved transcript text and exports are unchanged.
 - **Scroll-synced transcript navigation**: Pi's single built-in `↓ Jump to latest message · Esc` control returns the fullscreen transcript to its newest output. In fullscreen mode, Escape is assigned to this scroll action and takes precedence over Pi's normal interrupt shortcut; clicking preserves any draft.
 - **Hypatia chat header**: the block H is the sole accent in the full header; a workspace also named Hypatia shows a distinguishing parent path, and UUID sessions use a short label.
 - **Research diagrams skill**: bundled guidance helps produce source-grounded Mermaid diagrams, with compact syntax for Pi's terminal chat and captions for saved research artifacts. No renderer dependency is added.

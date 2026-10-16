@@ -36,16 +36,16 @@ export function readPromptSpecs(appRoot) {
 
 export const extensionCommandSpecs = [
 	{ name: "compact", args: "[instructions]", section: "Project & Session", description: "Compact older session context while retaining observed citations, verification states, artifact paths and next steps.", publicDocs: true },
-	{ name: "idea", args: "[research goal]", section: "Project & Session", description: "Choose a one-model or three-model panel above the input; approving the readable, budget-checked contract starts Idea Forge. Defaults: 12 calls, 900s, 5000 tokens/request, 90s/request. Use research-ideation for broad chat-only brainstorming.", publicDocs: true },
+	{ name: "idea", args: "[research goal]", section: "Project & Session", description: "Choose a one-model or three-model panel above the input; use the mouse wheel or arrow keys to move through models. Relevant project wiki pages can be frozen as generation context. Approving the readable, budget-checked contract starts Idea Forge. Defaults: 12 calls, 900s, 5000 tokens/request, 90s/request. Use research-ideation for broad chat-only brainstorming.", publicDocs: true },
 	{ name: "experiments", args: "[tree create|list|status <slug>|approve <tree> <node>|fork <tree> <parent> <child> <hypothesis>|promote <tree> <node>|pause|resume|recover|close-node <tree> <node>|close|export <tree>|acknowledge <tree> <node>|generate <goal>|ideas|forge-status|forge-pause|forge-resume|forge-recover|forge-approve <slug>|status|pause|resume|approve|export|close|recover|review <slug>|create <goal>|create-json <contract-file>|import <idea-file>|import-json <idea-file> --contract <contract-file>]", section: "Project & Session", description: "Prepare experiments or native research ideas in chat with /idea, then approve a frozen contract; manage receipts, shared-budget Git worktree trees and recovery.", publicDocs: true },
 	{ name: "help", args: "", section: "Project & Session", description: "Search grouped Hypatia commands and prefill the composer without sending.", publicDocs: true },
 	{ name: "init", args: "", section: "Project & Session", description: "Bootstrap AGENTS.md and session-log folders for a research project.", publicDocs: true },
-	{ name: "outputs", args: "", section: "Project & Session", description: "View grouped research reports and provenance in the TUI, search their text, or copy artifact paths.", publicDocs: true },
-	{ name: "sources", args: "", section: "Project & Session", description: "Browse citations from the latest assistant answer; open or copy a source URL.", publicDocs: true },
+	{ name: "outputs", args: "", section: "Project & Session", description: "Browse reports, provenance, drafts, and other artifacts in one searchable TUI; preview text, open related report/provenance files, or copy paths.", publicDocs: true },
+	{ name: "sources", args: "", section: "Project & Session", description: "Browse citations from the latest answer; use the mouse wheel or arrow keys to move, Enter to open, or c to copy a URL.", publicDocs: true },
 	{ name: "compare-provenance", args: "", section: "Project & Session", description: "Compare verification and source-coverage metadata from two completed research runs.", publicDocs: true },
 	{ name: "model-routes", args: "", section: "Agents & Delegation", description: "Configure ordered model routes and per-role thinking for evidence-scout, scribe, auditor, critic, and reviser.", publicDocs: true },
 	{ name: "service-tier", args: "", section: "Project & Session", description: "View or set the provider service tier override for supported models.", publicDocs: true },
-	{ name: "tools", args: "", section: "Project & Session", description: "Browse public research tools, including science search and the explicit local Laya advisory tool, with source and parameter summaries.", publicDocs: true },
+	{ name: "tools", args: "", section: "Project & Session", description: "Browse public research tools, including science search and the explicit local Kev advisory tool, with source and parameter summaries.", publicDocs: true },
 	{ name: "tree", args: "", section: "Project & Session", description: "Navigate session branches; optional branch summaries preserve research hypotheses, citations, verification states and next steps.", publicDocs: true },
 ];
 
@@ -133,11 +133,14 @@ export const cliCommandSections = [
 	{
 		title: "AlphaXiv",
 		commands: [
-			{ usage: "hypatia alpha login", description: "Sign in to alphaXiv." },
-			{ usage: "hypatia alpha logout", description: "Clear alphaXiv auth." },
-			{ usage: "hypatia alpha status", description: "Check alphaXiv auth status." },
-			{ usage: 'hypatia alpha search "query"', description: "Search papers through Hypatia's bundled alphaXiv client." },
-			{ usage: "hypatia alpha get <id-or-url>", description: "Fetch paper content and local annotations." },
+			{ usage: "hypatia alpha login", description: "Sign in for agentic search, PDF Q&A, and GitHub code reading." },
+			{ usage: "hypatia alpha logout", description: "Clear optional AlphaXiv account auth." },
+			{ usage: "hypatia alpha status", description: "Check optional AlphaXiv account auth." },
+			{ usage: 'hypatia alpha search "query"', description: "Search AlphaXiv's public semantic, keyword, or title endpoints without login; public modes support date filters, ranking, and result limits." },
+			{ usage: 'hypatia alpha search --mode title "paper title"', description: "Find papers through AlphaXiv's fast public title search without login." },
+			{ usage: 'hypatia alpha search --published-after YYYY-MM-DD --published-before YYYY-MM-DD --prioritize recency --limit 20 "query"', description: "Filter public AlphaXiv discovery by publication date and ranking; output limit is 1–200 (default 15)." },
+			{ usage: "hypatia alpha get <id-or-url>", description: "Fetch public AlphaXiv paper content and local annotations without login." },
+			{ usage: "hypatia alpha implementations <id-or-url>", description: "List public GitHub implementations linked to an AlphaXiv paper without login." },
 			{ usage: 'hypatia alpha ask <id-or-url> "question"', description: "Ask a question about a paper." },
 			{ usage: "hypatia alpha code <github-url> [path]", description: "Inspect a paper repository." },
 			{ usage: "hypatia alpha annotate ...", description: "Read, write, list, or clear local paper notes." },
@@ -159,9 +162,9 @@ export const cliCommandSections = [
 
 export const legacyFlags = [
 	{ usage: '--prompt "<text>"', description: "Run one prompt and exit." },
-	{ usage: "--alpha-login", description: "Sign in to alphaXiv and exit." },
-	{ usage: "--alpha-logout", description: "Clear alphaXiv auth and exit." },
-	{ usage: "--alpha-status", description: "Show alphaXiv auth status and exit." },
+	{ usage: "--alpha-login", description: "Sign in for agentic AlphaXiv search, PDF Q&A, and GitHub code reading, then exit." },
+	{ usage: "--alpha-logout", description: "Clear optional AlphaXiv account auth and exit." },
+	{ usage: "--alpha-status", description: "Show optional AlphaXiv account auth status and exit." },
 	{ usage: "--model <provider/model|provider:model>", description: "Force a specific approved research model." },
 	{ usage: "--service-tier <tier>", description: "Override request service tier for this run." },
 	{ usage: "--thinking <level>", description: "Set thinking level: off | minimal | low | medium | high | xhigh | max." },

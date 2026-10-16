@@ -18,12 +18,13 @@ export async function createGeneration(workspace:string,input:GenerationInput,ba
   for(const field of ["topic","signal","resourceDescription"] as const)if(typeof input[field]!=="string"||!input[field].trim()||input[field].length>20000)throw new Error(`${field} is required and bounded.`);
   for(const [field,max]of [["maxRequests",100],["maxWallSeconds",3600],["maxTokens",8192],["requestTimeoutSeconds",300]] as const)if(!Number.isInteger(input[field])||input[field]<1||input[field]>max)throw new Error(`${field} must be in 1..${max}.`);
   if(input.requestTimeoutSeconds>input.maxWallSeconds)throw new Error("Request timeout exceeds generation time budget.");
-  let current:Backend, knowledge:Buffer, direction:{id:string;file:string;hash:string};
+  let current:Backend, knowledge:Buffer, direction:{id:string;file:string;hash:string}, knowledgeSources:{path:string;hash:string}[]|undefined;
   if(backend.kind==="native") {
     if(input.modelPanel.length<1||input.modelPanel.length>6)throw new Error("Select 1..6 Hypatia models.");
     const prepared=await prepareNativeGeneration(workspace,input,backend);current=prepared.current;
-    direction=prepared.knowledge;knowledge=Buffer.from(prepared.knowledge.text);
+    direction=prepared.knowledge;knowledge=Buffer.from(prepared.knowledge.text);knowledgeSources=prepared.knowledge.sources;
   } else {
+    if(input.knowledgePaths?.length)throw new Error("Selected project wiki knowledge bundles require the native Idea Forge backend.");
     if(input.modelPanel.length<3||input.modelPanel.length>6||new Set(input.modelPanel).size!==input.modelPanel.length)throw new Error("Select 3..6 unique model aliases.");
     current=await inspectBackend(backend.root,backend.python,input.modelPanel,backend.providerConfig);
     if(current.configHash!==backend.configHash||current.sourceHash!==backend.sourceHash||current.bridgeHash!==backend.bridgeHash)throw new Error("Preflight changed; inspect and approve the new backend configuration.");
@@ -36,7 +37,7 @@ export async function createGeneration(workspace:string,input:GenerationInput,ba
   const root=await generationRoot(workspace,input.slug);await mkdir(await safePath(workspace,"experiments/idea-forge"),{recursive:true});await mkdir(root);
   await mkdir(await safePath(root,"knowledge_base"));await writeFile(await safePath(root,`knowledge_base/${direction.file}`),knowledge,{flag:"wx",mode:0o600});
   await mkdir(await safePath(root,"receipts"));
-  const spec:GenerationSpec={...input,direction:direction.id,version:1,workspace,createdAt:new Date().toISOString(),sourceUrl:input.sourceUrl??"",seedHash:objectHash({topic:input.topic,signal:input.signal,sourceUrl:input.sourceUrl??""}),backend:current,knowledgeFile:direction.file,knowledgeHash:direction.hash};
+  const spec:GenerationSpec={...input,direction:direction.id,version:1,workspace,createdAt:new Date().toISOString(),sourceUrl:input.sourceUrl??"",seedHash:objectHash({topic:input.topic,signal:input.signal,sourceUrl:input.sourceUrl??""}),backend:current,knowledgeFile:direction.file,knowledgeHash:direction.hash,knowledgeSources};
   await exclusiveJson(await safePath(root,"contract.json"),spec);
   const run:Generation={root,spec,state:{version:1,contractHash:objectHash(spec),status:"planned",spentMs:0,receipts:[],updatedAt:spec.createdAt}};
   await lock(root,()=>saveGeneration(run,"created"));return run;

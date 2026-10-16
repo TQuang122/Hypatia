@@ -22,6 +22,7 @@ import {
 import { getValidToken as getValidAlphaToken } from "@companion-ai/alpha-hub/lib/auth";
 
 import { verifyAlphaAuthStatus } from "./alpha-auth-status.js";
+import { runAlphaPublicCli } from "./alpha-public-cli.js";
 import { ensureHypatiaAgentDir } from "./bootstrap/home.js";
 import { ensureHypatiaHome, getDefaultSessionDir, getHypatiaAgentDir, getHypatiaHome } from "./config/paths.js";
 import { getLastPiStderr, launchPiChat, runPi } from "./pi/launch.js";
@@ -232,7 +233,7 @@ async function handleAlphaCommand(action: string | undefined): Promise<void> {
 			const name = status.name ?? getAlphaUserName();
 			console.log(name ? `alphaXiv logged in as ${name}` : "alphaXiv logged in");
 		} else {
-			console.log("alphaXiv not logged in");
+			console.log("alphaXiv account tools are not logged in; public search and paper reading work without login");
 			process.exitCode = 1;
 		}
 		return;
@@ -600,9 +601,12 @@ async function runMain(input: { here: string; appRoot: string; hypatiaVersion: s
 
 	const rawArgs = process.argv.slice(2);
 	const alphaPassthrough = resolveAlphaPassthroughArgs(rawArgs);
-	if (alphaPassthrough && alphaPassthrough.args[0] !== "status") {
-		await runBundledAlphaCli(appRoot, alphaPassthrough.args, { cwd: alphaPassthrough.cwd });
-		return;
+	if (alphaPassthrough) {
+		if (await runAlphaPublicCli(alphaPassthrough.args)) return;
+		if (alphaPassthrough.args[0] !== "status") {
+			await runBundledAlphaCli(appRoot, alphaPassthrough.args, { cwd: alphaPassthrough.cwd });
+			return;
+		}
 	}
 
 	const parseCliArgs = () =>
@@ -795,6 +799,7 @@ async function runMain(input: { here: string; appRoot: string; hypatiaVersion: s
 			await handleAlphaCommand("status");
 			return;
 		}
+		if (await runAlphaPublicCli(rest)) return;
 		await runBundledAlphaCli(appRoot, rest, { cwd: workingDir });
 		return;
 	}

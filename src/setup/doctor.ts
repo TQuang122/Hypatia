@@ -109,7 +109,7 @@ export async function runStatus(options: DoctorOptions): Promise<void> {
 	printInfo(`Authenticated models: ${snapshot.authenticatedModelCount}`);
 	printInfo(`Authenticated providers: ${snapshot.authenticatedProviderCount}`);
 	printInfo(`Recommended model: ${snapshot.recommendedModel ?? "not available"}`);
-	printInfo(`alphaXiv: ${snapshot.alphaLoggedIn ? snapshot.alphaUser ?? "configured" : "not configured"}`);
+	printInfo(`alphaXiv account features: ${snapshot.alphaLoggedIn ? snapshot.alphaUser ?? "configured" : "not configured (public search and reading are available)"}`);
 	printInfo(`Web access: pi-web-access (${snapshot.webRouteLabel})`);
 	printInfo(`Service tier: ${getConfiguredServiceTier(options.settingsPath) ?? "not set"}`);
 	printInfo(`Preview: ${snapshot.previewConfigured ? "configured" : "not configured"}`);
@@ -155,15 +155,15 @@ export async function runDoctor(options: DoctorOptions): Promise<void> {
 		(error: unknown) => ({ authenticated: false, error: error instanceof Error ? error.message : String(error) }),
 	);
 	if (alphaStatus.authenticated) {
-		console.log("alphaXiv auth: ok");
+		console.log("alphaXiv account tools: ok");
 		const name = ("name" in alphaStatus ? alphaStatus.name : undefined) ?? getAlphaUserName();
 		if (name) {
 			console.log(`  user: ${name}`);
 		}
 	} else if ("error" in alphaStatus) {
-		console.log(`alphaXiv auth: unverified (${alphaStatus.error})`);
+		console.log(`alphaXiv account tools: unverified (${alphaStatus.error}); public search and reading do not use this login`);
 	} else {
-		console.log(`alphaXiv auth: ${isAlphaLoggedIn() ? "expired, run hypatia alpha login" : "missing"}`);
+		console.log(`alphaXiv account tools: ${isAlphaLoggedIn() ? "expired, run hypatia alpha login" : "not signed in (optional; public search and reading are available)"}`);
 	}
 	console.log(`supported models: ${supportedModels.length}`);
 	if (modelStatus.availableModels.length > 0) {

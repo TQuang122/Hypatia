@@ -98,6 +98,8 @@ Paper-discovery tools (`alpha_search` and `hypatia_science_database_search`) use
 
 Completed assistant answers compact arXiv, OpenReview, and DOI URLs into short labels; OSC 8 terminals make the labels clickable. Citation entries give numbers and titles more weight, show venue/year details in muted text, and render explicit verification or completeness notes as amber callouts. Heading levels 3–6 use clean heading styling without visible `###` markers. This is a TUI-only Markdown transformation: saved transcript text, model context, and exports remain unchanged.
 
+Chat math uses Pi's built-in LaTeX-to-Unicode renderer for supported notation. Write display equations as standalone `$$...$$` or `\[...\]` blocks; they keep normal upright text styling. The saved transcript, model context, and exports remain unchanged.
+
 ## Experiment imports and execution
 
 `/experiments` manages benchmark jobs under `experiments/<slug>/`; the footer reads their persisted state. `/autoresearch` or `/experiments create <goal>` prepares a contract in chat for user approval and reuses its approval/budget on resume. Source checkouts need `npm run build` and a restart after updating the compiled experiment engine; packaged installs include it.
@@ -208,47 +210,31 @@ Hypatia reads these environment variables. `HYPATIA_MODEL`, `HYPATIA_THINKING`, 
 | `HYPATIA_TOOL_BUDGET` | Max top-level tool calls per session; unset means unlimited |
 | `HYPATIA_AUTORESEARCH_ROOT` | Local AutoResearch repository root for validating exported idea provenance |
 | `HYPATIA_CONTEXT7` | Set to `1` to register the Context7 MCP server (versioned library docs, fetched via npx) |
-| `HYPATIA_LAYA_ENABLED` | Set to `1` to enable the explicit local Laya advisory tool (off by default) |
-| `HYPATIA_LAYA_URL` | Loopback HTTP origin for `laya-serve`; defaults to `http://127.0.0.1:8000` and rejects non-loopback hosts |
-| `HYPATIA_LAYA_MODEL` | Checkpoint name or registered model alias; defaults to `english` |
-| `HYPATIA_LAYA_TIMEOUT_MS` | Per-candidate Laya request timeout in milliseconds; defaults to `2000` |
-| `HYPATIA_LAYA_CONCURRENCY` | Maximum concurrent candidate scores; defaults to `4` and is capped at `8` |
-| `LAYA_API_KEY` | Optional bearer key shared with the local Laya service |
+| `HYPATIA_KEV_ENABLED` | Set to `1` to enable the explicit local Kev advisory tool (off by default) |
+| `HYPATIA_KEV_URL` | Loopback HTTP origin for Kev; defaults to `http://127.0.0.1:8008` and rejects non-loopback hosts |
+| `HYPATIA_KEV_MODEL` | Model name exposed by Kev; defaults to `kev-latest` |
+| `HYPATIA_KEV_TIMEOUT_MS` | Per-candidate Kev request timeout in milliseconds; defaults to `2000` |
+| `HYPATIA_KEV_CONCURRENCY` | Maximum concurrent candidate scores; defaults to `4` and is capped at `8` |
+| `KEV_API_KEY` | Optional bearer key shared with the local Kev service |
 | `CORE_API_KEY` | Free CORE key ([create one](https://core.ac.uk/services/api)); without one, CORE results are metadata-only with no full text |
 | `UNPAYWALL_EMAIL` | Your email, required for the Unpaywall step of OA recovery (`NCBI_EMAIL` works as a fallback) |
 
-## Optional local Laya advisory
+## Optional local Kev advisory
 
-Laya is disabled by default and runs as a separate service. To install it in an isolated Python environment and bind it to loopback:
-
-```bash
-uv venv --python 3.13 ~/.hypatia/laya-py313
-uv pip install --python ~/.hypatia/laya-py313/bin/python 'laya[serve]==0.4.1'
-LAYA_HOST=127.0.0.1 \
-LAYA_PORT=8000 \
-LAYA_DEVICE=cpu \
-LAYA_PRELOAD=1 \
-LAYA_MODELS=english \
-LAYA_DEFAULT_MODEL=english \
-~/.hypatia/laya-py313/bin/laya-serve
-```
-
-Then set `HYPATIA_LAYA_ENABLED=1` in the environment or `.env` file used to launch Hypatia. The optional URL must be an HTTP loopback origin (`127.0.0.1` or `[::1]`); Hypatia never sends candidate text to a remote Laya endpoint. If `LAYA_API_KEY` is set for the service, set the same value for Hypatia. The science-database search never calls Laya or changes source order. Ask Hypatia to call `hypatia_laya_advisory` after a topical search to get scores and a separate suggested order. It checks liveness before scoring and requires a healthy final status and the configured checkpoint revision before returning advice. Lazy loading is supported; preloading is recommended to avoid a cold first request timing out.
-
-The selected model defaults to `english`. To serve a fine-tuned checkpoint under a local alias with the pinned Laya 0.4.1 environment, use the repository wrapper around Laya's supported `Router(models=...)` and `create_app(router)` APIs:
+Kev is disabled by default and runs as a separate service. Kev requires Python 3.12 or 3.13 and `uv`; its server uses MLX automatically on Apple Silicon. Clone the [Kev repository](https://github.com/jaredpalmer/kev), install the serving extra, and start a checkpoint on loopback:
 
 ```bash
-~/.hypatia/laya-py313/bin/python evals/serve_hypatia_laya.py \
-  --checkpoint /absolute/path/to/checkpoint \
-  --model-name hypatia_relevance \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --device cpu
+git clone https://github.com/jaredpalmer/kev.git ~/.hypatia/kev
+cd ~/.hypatia/kev
+uv sync --extra serve
+uv run --extra serve python -m kev.serve --run jaredpalmer/kev-4b --port 8008
 ```
 
-The wrapper re-points the built-in `english` name to the local checkpoint, so leave `HYPATIA_LAYA_MODEL=english`. It preloads the checkpoint before binding, avoiding a first-call model load on the advisory's per-candidate timeout.
+If the Kev server uses `KEV_API_KEY`, set the same value in the environment used to launch Hypatia. Then set `HYPATIA_KEV_ENABLED=1` in Hypatia's environment or `.env` file. The optional URL must be an HTTP loopback origin (`127.0.0.1` or `[::1]`); Hypatia never sends candidate text to a remote Kev endpoint. Science-database search never calls Kev or changes source order. Ask Hypatia to call `hypatia_kev_advisory` after a topical search to get scores and a separate suggested order. The advisory checks `GET /v1/models` before and after scoring and preserves the original results if the selected model or checkpoint changes.
 
-Only topical result sets from Semantic Scholar, OpenAlex, PubMed, Europe PMC, and CORE are eligible. Exact identifiers, author/citation/reference lookups, arXiv ID lookup, and full-text retrieval are rejected by operation mode. The advisory retains every candidate and reports each original rank alongside a separate suggested order. Health, timeout, HTTP, truncation, or response-validation problems never alter the primary result order and show a visible status. Automatic reordering is not enabled; consider it only after the held-out quality and latency gate passes.
+`HYPATIA_KEV_MODEL` defaults to `kev-latest`, the model name exposed by Kev's server. The advisory result includes `kevOriginalRank`, `kevSuggestedRank`, and `kevRankDelta` for each candidate. A positive `kevRankDelta` means Kev suggested moving the candidate upward; a negative value means downward. The primary `results` array remains in source order. `kevScore` is a ranking signal, not calibrated confidence.
+
+Only topical result sets from Semantic Scholar, OpenAlex, PubMed, Europe PMC, and CORE are eligible. Exact identifiers, author/citation/reference lookups, arXiv ID lookup, and full-text retrieval are rejected by operation mode. The advisory retains every candidate and reports each original rank alongside a separate suggested order. Service, timeout, HTTP, truncation, or response-validation problems never alter the primary result order and show a visible status. The advisory is explicit and opt-in; it does not automatically reorder search results.
 
 ## Telemetry
 
@@ -298,9 +284,9 @@ hypatia --session-dir <path>          # store sessions somewhere else
 
 ## Diagnostics
 
-`hypatia doctor` checks alphaXiv auth, the default model and authenticated providers, `models.json`, pandoc, web search config, and the Pi runtime, and prints next steps. `hypatia status` prints a shorter summary.
+`hypatia doctor` checks optional alphaXiv account tools, the default model and authenticated providers, `models.json`, pandoc, web search config, and the Pi runtime, and prints next steps. Public AlphaXiv search and paper reading do not require login. `hypatia status` prints a shorter summary.
 
 
 ### Native Idea Forge
 
-`research-ideation` is available for broad chat-based brainstorming before a direction is chosen. It returns a few speculative candidates without starting separate Idea Forge panel calls; use `/idea` to prepare one bounded proposal. In the TUI, entering a goal opens an opaque selector above the message input for one current model or three distinct available models; no model list is needed in the prompt. A scrollable contract review groups the goal, model panel, resources and caps, estimates up to three requests per selected model, and rejects a cap below the selected panel's full-run estimate. Unless specified otherwise, limits are 12 API attempts, 900 seconds, 5000 output tokens per request and 90 seconds per request. Approving the contract starts Idea Forge automatically; benchmark execution still requires its own contract approval. Native knowledge directions now include retrieval/ranking, RAG evaluation, agent evaluation and statistical design, alongside QML, ML, LLM and general research; custom project knowledge can replace them. No clone, Python venv or separate credentials are needed for new native runs. Critical missing information is grouped into one chat question. Existing legacy Python runs continue using `autoresearch-backend.json`; that file is ignored by new native generation. See [Idea Forge generation](/hypatia/docs/workflows/autoresearch#idea-forge-generation).
+`research-ideation` is available for broad chat-based brainstorming before a direction is chosen. It returns a few speculative candidates without starting separate Idea Forge panel calls; use `/idea` to prepare one bounded proposal. In the TUI, entering a goal opens an opaque selector above the message input for one current model or three distinct available models; no model list is needed in the prompt. A scrollable contract review groups the goal, model panel, resources and caps, estimates up to three requests per selected model, and rejects a cap below the selected panel's full-run estimate. Unless specified otherwise, limits are 12 API attempts, 900 seconds, 5000 output tokens per request and 90 seconds per request. Approving the contract starts Idea Forge automatically; benchmark execution still requires its own contract approval. Native knowledge directions now include retrieval/ranking, RAG evaluation, agent evaluation and statistical design, alongside QML, ML, LLM and general research. When relevant, up to 12 indexed project wiki concept/source pages supplement the matching built-in guidance; the selected pages and hashes are frozen in the reviewed contract, with a 128 KiB total limit and pending proposals excluded. No clone, Python venv or separate credentials are needed for new native runs. Critical missing information is grouped into one chat question. Existing legacy Python runs continue using `autoresearch-backend.json`; that file is ignored by new native generation. See [Idea Forge generation](/hypatia/docs/workflows/autoresearch#idea-forge-generation).

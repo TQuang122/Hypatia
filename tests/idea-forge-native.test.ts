@@ -93,7 +93,10 @@ test("chat entrypoints prefill/send requests without wizard; normal chat is not 
   await runExperimentsCommand("generate VQC entanglement ideas", ctx); assert.match(sent[0]!, /VQC entanglement ideas/);
   await runExperimentsCommand("create quantum benchmark", ctx); assert.match(sent[1]!, /quantum benchmark/);
   await runExperimentsCommand("create", ctx); assert.match(composer, /Create a bounded benchmark/);
-  const event = { prompt: "Explain what a qubit is", systemPromptOptions: { sections: {} } }; hook(event, ctx); assert.equal(event.prompt, "Explain what a qubit is"); assert.equal(sent.length, 2); assert.equal(f.count(), 0);
+  const event: any = { prompt: "Explain what a qubit is", systemPromptOptions: { sections: {} } }; hook(event, ctx); assert.equal(event.prompt, "Explain what a qubit is");
+  assert.match(event.systemPromptOptions.sections.hypatia_experiments, /wiki\/index\.md/u);
+  assert.match(event.systemPromptOptions.sections.hypatia_experiments, /knowledgePaths/u);
+  assert.equal(sent.length, 2); assert.equal(f.count(), 0);
 });
 test("native tool declines approval once and makes no provider call", async t => {
   const f = await fixture(t); let definition: any, confirmations = 0;
@@ -103,6 +106,33 @@ test("native tool declines approval once and makes no provider call", async t =>
   const result = await definition.execute("create", { action: "create", contract: { slug: "single-model", topic: "QML pilot", signal: "Compare entanglement on two moons" } }, undefined, undefined, ctx);
   assert.equal(result.isError, undefined, result.content[0].text); assert.equal(result.details.status, "planned"); assert.equal(confirmations, 1); assert.equal(f.count(), 0);
   const denied = await definition.execute("run", { action: "run", slug: "single-model" }, undefined, undefined, ctx); assert.equal(denied.isError, true); assert.equal(f.count(), 0);
+});
+test("native Idea Forge preflights, reviews, and freezes selected wiki pages as one knowledge bundle", async t => {
+  const f = await fixture(t); const page = "wiki/concepts/rag-evaluation.md"; const body = "# RAG evaluation\nKeep retrieval and answer grounding metrics separate.\n";
+  await mkdir(join(f.workspace, "wiki/concepts"), { recursive: true }); await writeFile(join(f.workspace, page), body);
+  let definition: any, approval = "";
+  registerNativeIdeaForge({ registerTool: (tool: unknown) => definition = tool, on() {} } as unknown as ExtensionAPI);
+  const ctx = { cwd: f.workspace, hasUI: true, model: { provider: "fixture", id: "a" }, ui: { confirm: async (_title: string, text: string) => { approval = text; return false; }, setStatus() {} } };
+  const selected = [page];
+  const preflight = await definition.execute("preflight", { action: "preflight", topic: "RAG evaluation", knowledgePaths: selected }, undefined, undefined, ctx);
+  assert.equal(preflight.isError, undefined, preflight.content[0].text);
+  assert.deepEqual(preflight.details.knowledgePaths, selected);
+  assert.equal(preflight.details.knowledgeSources[0].path, page);
+  assert.equal(preflight.details.knowledgeHash.length, 64);
+  assert.equal(f.count(), 0);
+
+  const created = await definition.execute("create", { action: "create", contract: { ...f.input, slug: "wiki-ideas", topic: "RAG evaluation", direction: preflight.details.direction, knowledgePaths: selected } }, undefined, undefined, ctx);
+  assert.equal(created.isError, undefined, created.content[0].text);
+  assert.equal(created.details.status, "planned");
+  assert.match(approval, /wiki\/concepts\/rag-evaluation\.md/u);
+  assert.match(approval, new RegExp(preflight.details.knowledgeSources[0].hash.slice(0, 12), "u"));
+  const run = await forge.generationStatus(f.workspace, "wiki-ideas");
+  assert.deepEqual(run.spec.knowledgePaths, selected);
+  assert.deepEqual(run.spec.knowledgeSources, preflight.details.knowledgeSources);
+  assert.equal(await readFile(join(run.root, "knowledge_base/custom.md"), "utf8").then(text => text.includes(body.trim())), true);
+  await writeFile(join(f.workspace, page), "Later wiki edit\n");
+  assert.equal((await readFile(join(run.root, "knowledge_base/custom.md"), "utf8")).includes("Later wiki edit"), false);
+  assert.equal(f.count(), 0);
 });
 integration("single-model native tool creates and runs after one approval without claiming independent review", async t => {
   const f = await fixture(t); let definition: any, confirmations = 0;

@@ -33,16 +33,25 @@ Workflow prompts can call the bundled agents (evidence-scout, scribe, auditor, c
 | `/log` | Write a durable session log with completed work, findings, open questions, and next steps |
 | `/help` | Search grouped Hypatia commands, inspect a concise detail view, and prefill the composer without sending |
 | `/init` | Bootstrap `AGENTS.md` and session-log folders for a research project |
-| `/idea <research goal>` | Generate bounded research ideas in chat with native Idea Forge |
+| `/idea <research goal>` | Generate bounded research ideas in chat with native Idea Forge; use the mouse wheel or arrow keys to move through the model selector |
 | `/experiments` | Native idea creation, experiment setup, review gates, receipts, pause/resume, trees and provenance |
-| `/outputs` | View grouped reports/provenance in the TUI, search text, or copy artifact paths |
-| `/sources` | Browse citations from the latest answer in a scrollable panel; `/` filters, Enter opens, `c` copies the URL, and Esc closes |
+| `/outputs` | Browse grouped reports, provenance, drafts, and other artifacts in one searchable TUI; preview text, open a related file, copy its path, or read it in chat |
+| `/sources` | Browse citations from the latest answer in a scrollable panel; arrows or the mouse wheel move through sources, `/` filters, Enter opens, `c` copies the URL, and Esc closes |
 | `/compare-provenance` | Compare recorded source coverage and verification metadata from two completed research runs |
+| `/wiki [init|ingest <source>|apply <proposal>|query <question>|lint]` | Maintain a project-local Markdown wiki with source-linked, reviewable updates |
 | `/compact [instructions]` | Compact older context while retaining observed citations, evidence states, artifact paths, and next steps |
 | `/tree` | Navigate session branches; chosen branch summaries preserve the research hypothesis and evidence |
 | `/model-routes` | Configure ordered subagent models and choose Pi-override or parent-model inheritance |
 | `/tools` | Browse public research tools with their source and parameter summary |
 | `/service-tier` | View or set the provider service tier override for supported models |
+
+### Project research wiki
+
+The wiki lives in `wiki/` inside the current workspace; it is separate from session logs, reports, and Hypatia's global memory. `/wiki init` creates `README.md`, `index.md`, `log.md`, and empty `sources/` and `concepts/` folders without replacing an existing wiki. `/wiki ingest <source>` reads a source and any matching provenance sidecar, then writes a proposed set of source/concept page changes under `wiki/.proposals/`. It does not modify canonical pages.
+
+Review a proposal, then run `/wiki apply <proposal>` to inspect the affected paths and confirm before applying it. `/wiki query <question>` uses the index and relevant pages as a navigation layer, while answers cite original source URLs or identifiers. `/wiki lint` checks local links, orphan pages, source metadata, and claims missing source references without editing files. A wiki synthesis is not primary evidence; retain disagreements and mark provisional or superseded claims explicitly.
+
+When the workspace has relevant wiki pages, `/lit`, `/deepresearch`, `/compare`, and `/replicate` read indexed pages as read-only leads and record the paths in their plans or provenance. If they delegate to an evidence-scout, the lead passes selected page paths, claim statuses, and original source URLs in the scout brief; the scout verifies the original sources and records the wiki pages it consulted. `/idea` can freeze up to 12 selected concept/source pages (128 KiB total) with their hashes in the generation contract; pending proposals are excluded and the approval view lists the selected pages.
 
 While subagents are active, Hypatia shows their role, model, current tool, and elapsed time in a panel above the composer. Press `Ctrl+Shift+A` to collapse or expand it.
 
@@ -50,7 +59,7 @@ During `/lit` and `/deepresearch`, the live progress widget tracks search, readi
 
 ## Reading research outputs
 
-`/outputs` groups files under `papers/`, `outputs/`, `experiments/`, and `notes/` into Reports, Provenance, Drafts, and Other artifacts. Reports are offered first, and each group is sorted newest first. Group labels describe file locations/types; they do not certify completion or verification.
+`/outputs` groups files under `papers/`, `outputs/`, `experiments/`, and `notes/` into Reports, Provenance, Drafts, and Other artifacts. Reports are offered first, and each group is sorted newest first. The responsive browser filters by title/path, previews a bounded text excerpt, and switches between a report and its matching provenance sidecar. Press Enter to open the full reader, `p` to switch to the paired file, `c` to copy its path, or `r` to prefill the path in chat. Group labels describe file locations/types; they do not certify completion or verification.
 
 Selecting Markdown opens a local reader; other supported text formats open as plain text. Use arrows, Page Up/Page Down, Home/End, or the fullscreen mouse wheel to scroll. `/` or `Ctrl+F` opens a literal, case-insensitive search of rendered text; Enter applies it, and `n`/`N` moves between matching rows. Escape cancels search editing, then returns from the reader to the list.
 

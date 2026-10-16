@@ -8,6 +8,11 @@ import test from "node:test";
 const root = process.cwd();
 const verifier = resolve(root, "scripts", "verify-package-budget.mjs");
 
+test("published package includes the shared AlphaXiv module used by its extension", () => {
+	const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { files?: string[] };
+	assert.ok(manifest.files?.includes("src/alpha-public.ts"));
+});
+
 function runBudget(packMetadata: Record<string, unknown>) {
 	const tempRoot = mkdtempSync(join(tmpdir(), "hypatia-package-budget-"));
 	const packOutput = join(tempRoot, "pack.json");

@@ -23,6 +23,7 @@
     ".hypatia/SYSTEM.md",
     ".hypatia/themes/",
     "extensions/",
+    "src/alpha-public.ts",
     "prompts/",
     "logo.mjs",
     "logo.d.mts",
